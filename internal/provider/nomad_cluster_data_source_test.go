@@ -134,7 +134,7 @@ func TestFlattenNomadClusterDataSource(t *testing.T) {
 		Description:      &description,
 		ConnectivityMode: sdk.ClusterConnectivityModeDirect,
 		Address:          &address,
-		AgentId:          &agentID,
+		NetworkAgentId:   &agentID,
 		SkipVerify:       true,
 		Scope:            "global",
 	}

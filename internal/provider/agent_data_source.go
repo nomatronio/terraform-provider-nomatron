@@ -91,7 +91,7 @@ func (d *AgentDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	}
 
 	var (
-		agent sdk.Agent
+		agent sdk.NetworkAgent
 		err   error
 	)
 
@@ -142,7 +142,7 @@ func (d *AgentDataSource) Configure(ctx context.Context, req datasource.Configur
 	d.client = client
 }
 
-func flattenAgentDataSource(agent sdk.Agent) AgentDataSourceModel {
+func flattenAgentDataSource(agent sdk.NetworkAgent) AgentDataSourceModel {
 	description := types.StringNull()
 	if agent.Description != nil {
 		description = types.StringValue(*agent.Description)
@@ -174,38 +174,38 @@ func flattenAgentDataSource(agent sdk.Agent) AgentDataSourceModel {
 	}
 }
 
-func readAgentByID(ctx context.Context, client *sdk.ClientWithResponses, agentID openapi_types.UUID) (sdk.Agent, error) {
-	rsp, err := client.ReadAgentWithResponse(ctx, agentID)
+func readAgentByID(ctx context.Context, client *sdk.ClientWithResponses, agentID openapi_types.UUID) (sdk.NetworkAgent, error) {
+	rsp, err := client.ReadNetworkAgentWithResponse(ctx, agentID)
 	if err != nil {
-		return sdk.Agent{}, err
+		return sdk.NetworkAgent{}, err
 	}
 
 	if rsp.JSON404 != nil {
-		return sdk.Agent{}, fmt.Errorf("no agent was found with id %q", agentID.String())
+		return sdk.NetworkAgent{}, fmt.Errorf("no agent was found with id %q", agentID.String())
 	}
 
 	if rsp.JSON200 == nil {
-		return sdk.Agent{}, fmt.Errorf("expected 200 response when reading agent %q, got %s", agentID.String(), rsp.Status())
+		return sdk.NetworkAgent{}, fmt.Errorf("expected 200 response when reading agent %q, got %s", agentID.String(), rsp.Status())
 	}
 
-	return rsp.JSON200.Data, nil
+	return rsp.JSON200.Data.NetworkAgent, nil
 }
 
-func findAgentByExactName(ctx context.Context, client *sdk.ClientWithResponses, name string) (sdk.Agent, error) {
-	params := &sdk.ListAgentsParams{
+func findAgentByExactName(ctx context.Context, client *sdk.ClientWithResponses, name string) (sdk.NetworkAgent, error) {
+	params := &sdk.ListNetworkAgentsParams{
 		Q: &name,
 	}
 
-	rsp, err := client.ListAgentsWithResponse(ctx, params)
+	rsp, err := client.ListNetworkAgentsWithResponse(ctx, params)
 	if err != nil {
-		return sdk.Agent{}, err
+		return sdk.NetworkAgent{}, err
 	}
 
 	if rsp.JSON200 == nil {
-		return sdk.Agent{}, fmt.Errorf("expected 200 response when listing agents for %q, got %s", name, rsp.Status())
+		return sdk.NetworkAgent{}, fmt.Errorf("expected 200 response when listing agents for %q, got %s", name, rsp.Status())
 	}
 
-	var matches []sdk.Agent
+	var matches []sdk.NetworkAgent
 	for _, agent := range rsp.JSON200.Data.Items {
 		if agent.Name == name {
 			matches = append(matches, agent)
@@ -214,10 +214,10 @@ func findAgentByExactName(ctx context.Context, client *sdk.ClientWithResponses, 
 
 	switch len(matches) {
 	case 0:
-		return sdk.Agent{}, fmt.Errorf("no agent was found with name %q", name)
+		return sdk.NetworkAgent{}, fmt.Errorf("no agent was found with name %q", name)
 	case 1:
 		return matches[0], nil
 	default:
-		return sdk.Agent{}, fmt.Errorf("multiple agents were found with name %q", name)
+		return sdk.NetworkAgent{}, fmt.Errorf("multiple agents were found with name %q", name)
 	}
 }

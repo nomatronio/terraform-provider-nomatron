@@ -131,13 +131,13 @@ func TestStateFromAgent_WithCreatorAndLastSeen(t *testing.T) {
 		Description: types.StringValue("old description"),
 	}
 
-	agent := sdk.Agent{
+	agent := sdk.NetworkAgent{
 		Id:              agentID,
 		Name:            "edge-agent-1",
 		Description:     &description,
 		IsActive:        true,
 		CreatedAt:       createdAt,
-		CreatedByType:   sdk.AgentCreatedByTypeUser,
+		CreatedByType:   sdk.NetworkAgentCreatedByTypeUser,
 		CreatedByUserId: &userID,
 	}
 
@@ -179,13 +179,13 @@ func TestStateFromAgent_WithNullOptionalFields(t *testing.T) {
 		CreatedAt:   types.StringValue(createdAt.Format(time.RFC3339)),
 	}
 
-	agent := sdk.Agent{
+	agent := sdk.NetworkAgent{
 		Id:                        agentID,
 		Name:                      "edge-agent-2",
 		Description:               nil,
 		IsActive:                  false,
 		CreatedAt:                 createdAt,
-		CreatedByType:             sdk.AgentCreatedByTypeServiceAccount,
+		CreatedByType:             sdk.NetworkAgentCreatedByTypeServiceAccount,
 		CreatedByServiceAccountId: &serviceAccountID,
 	}
 
@@ -219,7 +219,7 @@ func TestStateFromAgent_PreservesBaseIdentityWhenResponseOmitsFields(t *testing.
 		CreatedAt:   types.StringValue("2026-03-26T10:00:00Z"),
 	}
 
-	state := stateFromAgent(base, sdk.Agent{})
+	state := stateFromAgent(base, sdk.NetworkAgent{})
 
 	if state.ID.ValueString() != "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" {
 		t.Fatalf("expected base id to be preserved, got %q", state.ID.ValueString())
@@ -238,21 +238,21 @@ func TestFlattenAgentCreatedByID(t *testing.T) {
 	userID := openapi_types.UUID(uuid.MustParse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"))
 	serviceAccountID := openapi_types.UUID(uuid.MustParse("cccccccc-cccc-cccc-cccc-cccccccccccc"))
 
-	gotUser := flattenAgentCreatedByID(sdk.Agent{
+	gotUser := flattenAgentCreatedByID(sdk.NetworkAgent{
 		CreatedByUserId: &userID,
 	})
 	if gotUser != "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" {
 		t.Fatalf("unexpected user creator id: %q", gotUser)
 	}
 
-	gotServiceAccount := flattenAgentCreatedByID(sdk.Agent{
+	gotServiceAccount := flattenAgentCreatedByID(sdk.NetworkAgent{
 		CreatedByServiceAccountId: &serviceAccountID,
 	})
 	if gotServiceAccount != "cccccccc-cccc-cccc-cccc-cccccccccccc" {
 		t.Fatalf("unexpected service account creator id: %q", gotServiceAccount)
 	}
 
-	gotEmpty := flattenAgentCreatedByID(sdk.Agent{})
+	gotEmpty := flattenAgentCreatedByID(sdk.NetworkAgent{})
 	if gotEmpty != "" {
 		t.Fatalf("expected empty creator id, got %q", gotEmpty)
 	}

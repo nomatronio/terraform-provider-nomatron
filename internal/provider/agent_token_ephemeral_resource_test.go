@@ -145,7 +145,7 @@ func TestAgentTokenEphemeralResource_EchoProvider(t *testing.T) {
 		if req.Method != http.MethodPost {
 			t.Fatalf("unexpected method: %s", req.Method)
 		}
-		if req.URL.Path != "/api/v1/agents/"+agentID.String()+"/tokens/rotate" {
+		if req.URL.Path != "/api/v1/network-agents/"+agentID.String()+"/tokens/rotate" {
 			t.Fatalf("unexpected path: %s", req.URL.Path)
 		}
 		if got := req.Header.Get("Authorization"); got != "Bearer service-account-token" {

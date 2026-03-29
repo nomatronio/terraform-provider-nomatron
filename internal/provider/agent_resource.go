@@ -129,7 +129,7 @@ func (r *AgentResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	body := sdk.CreateAgentJSONRequestBody{
+	body := sdk.CreateNetworkAgentJSONRequestBody{
 		Name: plan.Name.ValueString(),
 	}
 
@@ -138,7 +138,7 @@ func (r *AgentResource) Create(ctx context.Context, req resource.CreateRequest, 
 		body.Description = &description
 	}
 
-	rsp, err := r.client.CreateAgentWithResponse(ctx, body)
+	rsp, err := r.client.CreateNetworkAgentWithResponse(ctx, body)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed To Create Agent", err.Error())
 		return
@@ -167,10 +167,10 @@ func (r *AgentResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	agent := rsp.JSON201.Data.Agent
+	agent := rsp.JSON201.Data.NetworkAgent
 	agentID := agent.Id
 	if agentID == uuid.Nil {
-		agentID = rsp.JSON201.Data.Token.AgentId
+		agentID = rsp.JSON201.Data.Token.NetworkAgentId
 	}
 	if agentID == uuid.Nil {
 		resp.Diagnostics.AddError(
@@ -181,7 +181,7 @@ func (r *AgentResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	if !plan.IsActive.IsNull() && !plan.IsActive.IsUnknown() && !plan.IsActive.ValueBool() && agent.IsActive {
-		deactivateResp, err := r.client.DeactivateAgentWithResponse(ctx, agentID)
+		deactivateResp, err := r.client.DeactivateNetworkAgentWithResponse(ctx, agentID)
 		if err != nil {
 			resp.Diagnostics.AddError("Failed To Deactivate Agent", err.Error())
 			return
@@ -210,7 +210,7 @@ func (r *AgentResource) Create(ctx context.Context, req resource.CreateRequest, 
 			return
 		}
 
-		agent = deactivateResp.JSON200.Data.Agent
+		agent = deactivateResp.JSON200.Data.NetworkAgent
 		if agent.Id != uuid.Nil {
 			agentID = agent.Id
 		}
@@ -297,7 +297,7 @@ func (r *AgentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		}
 	}
 
-	body := sdk.UpdateAgentJSONRequestBody{}
+	body := sdk.UpdateNetworkAgentJSONRequestBody{}
 	shouldPatch := false
 
 	if stringValueChanged(plan.Name, state.Name) && !plan.Name.IsUnknown() && !plan.Name.IsNull() {
@@ -312,9 +312,9 @@ func (r *AgentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		shouldPatch = true
 	}
 
-	currentAgent := sdk.Agent{}
+	currentAgent := sdk.NetworkAgent{}
 	if shouldPatch {
-		rsp, err := r.client.UpdateAgentWithResponse(ctx, agentID, body)
+		rsp, err := r.client.UpdateNetworkAgentWithResponse(ctx, agentID, body)
 		if err != nil {
 			resp.Diagnostics.AddError("Failed To Update Agent", err.Error())
 			return
@@ -343,12 +343,12 @@ func (r *AgentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 			return
 		}
 
-		currentAgent = rsp.JSON200.Data.Agent
+		currentAgent = rsp.JSON200.Data.NetworkAgent
 	}
 
 	if boolValueChanged(plan.IsActive, state.IsActive) && !plan.IsActive.IsNull() && !plan.IsActive.IsUnknown() {
 		if plan.IsActive.ValueBool() {
-			activateResp, err := r.client.ActivateAgentWithResponse(ctx, agentID, sdk.ActivateAgentJSONRequestBody{})
+			activateResp, err := r.client.ActivateNetworkAgentWithResponse(ctx, agentID, sdk.ActivateNetworkAgentJSONRequestBody{})
 			if err != nil {
 				resp.Diagnostics.AddError("Failed To Activate Agent", err.Error())
 				return
@@ -377,9 +377,9 @@ func (r *AgentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 				return
 			}
 
-			currentAgent = activateResp.JSON201.Data.Agent
+			currentAgent = activateResp.JSON201.Data.NetworkAgent
 		} else {
-			deactivateResp, err := r.client.DeactivateAgentWithResponse(ctx, agentID)
+			deactivateResp, err := r.client.DeactivateNetworkAgentWithResponse(ctx, agentID)
 			if err != nil {
 				resp.Diagnostics.AddError("Failed To Deactivate Agent", err.Error())
 				return
@@ -408,7 +408,7 @@ func (r *AgentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 				return
 			}
 
-			currentAgent = deactivateResp.JSON200.Data.Agent
+			currentAgent = deactivateResp.JSON200.Data.NetworkAgent
 		}
 	}
 
@@ -467,7 +467,7 @@ func (r *AgentResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 		}
 	}
 
-	rsp, err := r.client.DeleteAgentWithResponse(ctx, agentID)
+	rsp, err := r.client.DeleteNetworkAgentWithResponse(ctx, agentID)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed To Delete Agent", err.Error())
 		return
@@ -500,7 +500,7 @@ func (r *AgentResource) ImportState(ctx context.Context, req resource.ImportStat
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func stateFromAgent(base AgentResourceModel, agent sdk.Agent) AgentResourceModel {
+func stateFromAgent(base AgentResourceModel, agent sdk.NetworkAgent) AgentResourceModel {
 	id := base.ID
 	if agent.Id != uuid.Nil {
 		id = types.StringValue(agent.Id.String())
@@ -557,7 +557,7 @@ func stateFromAgent(base AgentResourceModel, agent sdk.Agent) AgentResourceModel
 	}
 }
 
-func flattenAgentCreatedByID(agent sdk.Agent) string {
+func flattenAgentCreatedByID(agent sdk.NetworkAgent) string {
 	if agent.CreatedByUserId != nil {
 		return agent.CreatedByUserId.String()
 	}
@@ -586,11 +586,11 @@ func (r *AgentResource) resolveAgentID(ctx context.Context, state AgentResourceM
 	}
 
 	query := state.Name.ValueString()
-	params := &sdk.ListAgentsParams{
+	params := &sdk.ListNetworkAgentsParams{
 		Q: &query,
 	}
 
-	rsp, err := r.client.ListAgentsWithResponse(ctx, params)
+	rsp, err := r.client.ListNetworkAgentsWithResponse(ctx, params)
 	if err != nil {
 		return openapi_types.UUID{}, err
 	}
@@ -599,7 +599,7 @@ func (r *AgentResource) resolveAgentID(ctx context.Context, state AgentResourceM
 		return openapi_types.UUID{}, fmt.Errorf("expected 200 response when listing agents for %q, got %s", query, rsp.Status())
 	}
 
-	var matches []sdk.Agent
+	var matches []sdk.NetworkAgent
 	for _, agent := range rsp.JSON200.Data.Items {
 		if agent.Name == query {
 			matches = append(matches, agent)
@@ -624,21 +624,21 @@ func (e *agentNotFoundError) Error() string {
 	return fmt.Sprintf("agent %q not found", e.id)
 }
 
-func (r *AgentResource) readAgent(ctx context.Context, agentID openapi_types.UUID) (sdk.Agent, error) {
-	rsp, err := r.client.ReadAgentWithResponse(ctx, agentID)
+func (r *AgentResource) readAgent(ctx context.Context, agentID openapi_types.UUID) (sdk.NetworkAgent, error) {
+	rsp, err := r.client.ReadNetworkAgentWithResponse(ctx, agentID)
 	if err != nil {
-		return sdk.Agent{}, err
+		return sdk.NetworkAgent{}, err
 	}
 
 	if rsp.JSON404 != nil {
-		return sdk.Agent{}, &agentNotFoundError{id: agentID.String()}
+		return sdk.NetworkAgent{}, &agentNotFoundError{id: agentID.String()}
 	}
 
 	if rsp.JSON200 == nil {
-		return sdk.Agent{}, fmt.Errorf("expected 200 response when reading agent %q, got %s", agentID.String(), rsp.Status())
+		return sdk.NetworkAgent{}, fmt.Errorf("expected 200 response when reading agent %q, got %s", agentID.String(), rsp.Status())
 	}
 
-	return rsp.JSON200.Data, nil
+	return rsp.JSON200.Data.NetworkAgent, nil
 }
 
 func errorAs(err error, target interface{}) bool {

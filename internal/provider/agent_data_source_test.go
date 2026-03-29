@@ -127,13 +127,13 @@ func TestFlattenAgentDataSource(t *testing.T) {
 	createdAt := time.Date(2026, 3, 26, 10, 0, 0, 0, time.UTC)
 	description := "Private runner for edge workloads"
 
-	agent := sdk.Agent{
+	agent := sdk.NetworkAgent{
 		Id:              agentID,
 		Name:            "edge-agent-1",
 		Description:     &description,
 		IsActive:        true,
 		CreatedAt:       createdAt,
-		CreatedByType:   sdk.AgentCreatedByTypeUser,
+		CreatedByType:   sdk.NetworkAgentCreatedByTypeUser,
 		CreatedByUserId: &userID,
 	}
 
@@ -167,7 +167,7 @@ func TestFlattenAgentDataSource_WithNullOptionalFields(t *testing.T) {
 
 	agentID := openapi_types.UUID(uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"))
 
-	agent := sdk.Agent{
+	agent := sdk.NetworkAgent{
 		Id:        agentID,
 		Name:      "edge-agent-2",
 		IsActive:  false,

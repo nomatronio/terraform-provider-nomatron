@@ -176,6 +176,8 @@ github.com/mitchellh/reflectwalk v1.0.2 h1:G2LzWKi524PWgd3mLHV8Y5k7s6XUvT0Gef6zx
 github.com/mitchellh/reflectwalk v1.0.2/go.mod h1:mSTlrgnPZtwu0c4WaC2kGObEpuNDbx0jmZXqmk4esnw=
 github.com/nomatronio/nomatron v0.0.0-20260325150224-7e8cd6802afc h1:KNq/KMCIFvMCnH0H5LgU8OQS0GiCFTbEggLEk6auclA=
 github.com/nomatronio/nomatron v0.0.0-20260325150224-7e8cd6802afc/go.mod h1:B7XXyZpUBnWnZDRi86ZDJ8aZKLDQHFEYguwGbR25xXk=
+github.com/nomatronio/nomatron v0.0.0-20260329095743-ee87cd418287 h1:ko1/BlMHKC+vQtzJlOeQO8VL3JMeYHEMosV++l9gMGs=
+github.com/nomatronio/nomatron v0.0.0-20260329095743-ee87cd418287/go.mod h1:B7XXyZpUBnWnZDRi86ZDJ8aZKLDQHFEYguwGbR25xXk=
 github.com/oapi-codegen/runtime v1.3.0 h1:vyK1zc0gDWWXgk2xoQa4+X4RNNc5SL2RbTpJS/4vMYA=
 github.com/oapi-codegen/runtime v1.3.0/go.mod h1:kOdeacKy7t40Rclb1je37ZLFboFxh+YLy0zaPCMibPY=
 github.com/oklog/run v1.1.0 h1:GEenZ1cK0+q0+wsJew9qUg/DyD8k3JzYsZAi5gYi2mA=

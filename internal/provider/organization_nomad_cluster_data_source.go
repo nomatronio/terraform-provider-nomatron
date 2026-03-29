@@ -135,8 +135,8 @@ func flattenOrganizationNomadClusterDataSource(base OrganizationNomadClusterData
 	}
 
 	agentID := types.StringNull()
-	if cluster.AgentId != nil {
-		agentID = types.StringValue(cluster.AgentId.String())
+	if cluster.NetworkAgentId != nil {
+		agentID = types.StringValue(cluster.NetworkAgentId.String())
 	}
 
 	return OrganizationNomadClusterDataSourceModel{

@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/terraform-plugin-log v0.10.0
 	github.com/hashicorp/terraform-plugin-testing v1.15.0
 	github.com/jarcoal/httpmock v1.4.1
-	github.com/nomatronio/nomatron v0.0.0-20260325150224-7e8cd6802afc
+	github.com/nomatronio/nomatron v0.0.0-20260329095743-ee87cd418287
 )
 
 require (

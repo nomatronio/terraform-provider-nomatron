@@ -406,7 +406,7 @@ func buildCreateClusterBody(plan, config NomadClusterResourceModel) (sdk.CreateG
 			diags.AddError("Invalid Agent ID", err.Error())
 			return body, diags
 		}
-		body.AgentId = &agentID
+		body.NetworkAgentId = &agentID
 	}
 
 	if !plan.ConnectivityMode.IsNull() && !plan.ConnectivityMode.IsUnknown() && plan.ConnectivityMode.ValueString() != "" {
@@ -458,7 +458,7 @@ func buildUpdateClusterBody(plan, state, config NomadClusterResourceModel) (sdk.
 			diags.AddError("Invalid Agent ID", err.Error())
 			return body, diags
 		}
-		body.AgentId = &agentID
+		body.NetworkAgentId = &agentID
 	}
 	if stringValueChanged(plan.ConnectivityMode, state.ConnectivityMode) && !plan.ConnectivityMode.IsNull() && !plan.ConnectivityMode.IsUnknown() && plan.ConnectivityMode.ValueString() != "" {
 		mode := sdk.UpdateClusterRequestConnectivityMode(plan.ConnectivityMode.ValueString())
@@ -510,8 +510,8 @@ func stateFromNomadCluster(base NomadClusterResourceModel, cluster sdk.Cluster) 
 	if agentID.IsUnknown() {
 		agentID = types.StringNull()
 	}
-	if cluster.AgentId != nil {
-		agentID = types.StringValue(cluster.AgentId.String())
+	if cluster.NetworkAgentId != nil {
+		agentID = types.StringValue(cluster.NetworkAgentId.String())
 	}
 
 	createdAt := types.StringNull()

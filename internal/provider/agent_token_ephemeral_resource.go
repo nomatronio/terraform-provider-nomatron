@@ -122,7 +122,7 @@ func (r *AgentTokenEphemeralResource) Open(ctx context.Context, req ephemeral.Op
 		return
 	}
 
-	body := sdk.RotateAgentTokenJSONRequestBody{}
+	body := sdk.RotateNetworkAgentTokenJSONRequestBody{}
 
 	if !data.Name.IsNull() && !data.Name.IsUnknown() {
 		name := data.Name.ValueString()
@@ -143,7 +143,7 @@ func (r *AgentTokenEphemeralResource) Open(ctx context.Context, req ephemeral.Op
 		body.RevokeExisting = &revokeExisting
 	}
 
-	rsp, err := r.client.RotateAgentTokenWithResponse(ctx, agentID, body)
+	rsp, err := r.client.RotateNetworkAgentTokenWithResponse(ctx, agentID, body)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed To Rotate Agent Token", err.Error())
 		return

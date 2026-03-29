@@ -114,7 +114,7 @@ func TestStateFromOrganizationNomadCluster(t *testing.T) {
 		Name:             "primary",
 		Description:      &description,
 		Address:          &address,
-		AgentId:          &agentID,
+		NetworkAgentId:   &agentID,
 		ConnectivityMode: sdk.ClusterConnectivityModeDirect,
 		Scope:            "cccccccc-cccc-cccc-cccc-cccccccccccc",
 		SkipVerify:       true,
