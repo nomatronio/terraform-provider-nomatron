@@ -33,42 +33,42 @@ type AgentDataSourceModel struct {
 }
 
 func (d *AgentDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_agent"
+	resp.TypeName = req.ProviderTypeName + "_network_agent"
 }
 
 func (d *AgentDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Fetch a single Nomatron agent by id or exact name.",
+		MarkdownDescription: "Fetch a single Nomatron network agent by id or exact name.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Agent ID. If omitted, the provider can look up the agent by exact name.",
+				MarkdownDescription: "Network Agent ID. If omitted, the provider can look up the network agent by exact name.",
 			},
 			"name": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Exact agent name. If omitted, the provider reads the agent by id.",
+				MarkdownDescription: "Exact network agent name. If omitted, the provider reads the network agent by id.",
 			},
 			"description": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "Description for the agent.",
+				MarkdownDescription: "Description for the network agent.",
 			},
 			"is_active": schema.BoolAttribute{
 				Computed:            true,
-				MarkdownDescription: "Whether the agent is active.",
+				MarkdownDescription: "Whether the network agent is active.",
 			},
 			"created_at": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "Timestamp when the agent was created.",
+				MarkdownDescription: "Timestamp when the network agent was created.",
 			},
 			"created_by_type": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "Type of actor that created the agent.",
+				MarkdownDescription: "Type of actor that created the network agent.",
 			},
 			"created_by_id": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "ID of the actor that created the agent, when available.",
+				MarkdownDescription: "ID of the actor that created the network agent, when available.",
 			},
 		},
 	}
@@ -85,7 +85,7 @@ func (d *AgentDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	if d.client == nil {
 		resp.Diagnostics.AddError(
 			"Client Not Configured",
-			"The provider client was not configured for the agent data source.",
+			"The provider client was not configured for the network agent data source.",
 		)
 		return
 	}
@@ -104,19 +104,19 @@ func (d *AgentDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 
 		agent, err = readAgentByID(ctx, d.client, agentID)
 		if err != nil {
-			resp.Diagnostics.AddError("Failed To Read Agent", err.Error())
+			resp.Diagnostics.AddError("Failed To Read Network Agent", err.Error())
 			return
 		}
 	} else if !data.Name.IsNull() && !data.Name.IsUnknown() && data.Name.ValueString() != "" {
 		agent, err = findAgentByExactName(ctx, d.client, data.Name.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Failed To Read Agent", err.Error())
+			resp.Diagnostics.AddError("Failed To Read Network Agent", err.Error())
 			return
 		}
 	} else {
 		resp.Diagnostics.AddError(
 			"Missing Lookup Attribute",
-			"Set either id or name to read a single agent.",
+			"Set either id or name to read a single network agent.",
 		)
 		return
 	}
@@ -181,11 +181,11 @@ func readAgentByID(ctx context.Context, client *sdk.ClientWithResponses, agentID
 	}
 
 	if rsp.JSON404 != nil {
-		return sdk.NetworkAgent{}, fmt.Errorf("no agent was found with id %q", agentID.String())
+		return sdk.NetworkAgent{}, fmt.Errorf("no network agent was found with id %q", agentID.String())
 	}
 
 	if rsp.JSON200 == nil {
-		return sdk.NetworkAgent{}, fmt.Errorf("expected 200 response when reading agent %q, got %s", agentID.String(), rsp.Status())
+		return sdk.NetworkAgent{}, fmt.Errorf("expected 200 response when reading network agent %q, got %s", agentID.String(), rsp.Status())
 	}
 
 	return rsp.JSON200.Data.NetworkAgent, nil
@@ -202,7 +202,7 @@ func findAgentByExactName(ctx context.Context, client *sdk.ClientWithResponses, 
 	}
 
 	if rsp.JSON200 == nil {
-		return sdk.NetworkAgent{}, fmt.Errorf("expected 200 response when listing agents for %q, got %s", name, rsp.Status())
+		return sdk.NetworkAgent{}, fmt.Errorf("expected 200 response when listing network agents for %q, got %s", name, rsp.Status())
 	}
 
 	var matches []sdk.NetworkAgent
@@ -214,10 +214,10 @@ func findAgentByExactName(ctx context.Context, client *sdk.ClientWithResponses, 
 
 	switch len(matches) {
 	case 0:
-		return sdk.NetworkAgent{}, fmt.Errorf("no agent was found with name %q", name)
+		return sdk.NetworkAgent{}, fmt.Errorf("no network agent was found with name %q", name)
 	case 1:
 		return matches[0], nil
 	default:
-		return sdk.NetworkAgent{}, fmt.Errorf("multiple agents were found with name %q", name)
+		return sdk.NetworkAgent{}, fmt.Errorf("multiple network agents were found with name %q", name)
 	}
 }

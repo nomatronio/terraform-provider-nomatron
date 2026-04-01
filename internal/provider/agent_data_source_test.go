@@ -36,8 +36,8 @@ func TestAgentDataSource_Metadata(t *testing.T) {
 
 	ds.Metadata(context.Background(), req, &resp)
 
-	if resp.TypeName != "nomatron_agent" {
-		t.Fatalf("expected type name %q, got %q", "nomatron_agent", resp.TypeName)
+	if resp.TypeName != "nomatron_network_agent" {
+		t.Fatalf("expected type name %q, got %q", "nomatron_network_agent", resp.TypeName)
 	}
 }
 
