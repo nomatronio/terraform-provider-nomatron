@@ -5,5 +5,5 @@ resource "nomatron_nomad_cluster" "example" {
   address           = "https://nomad.example.com"
   skip_verify       = false
 
-  acl_token = "sensitive-token"
+  acl_token_wo = "sensitive-token"
 }

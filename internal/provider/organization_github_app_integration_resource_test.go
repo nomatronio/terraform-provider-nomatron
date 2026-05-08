@@ -55,8 +55,8 @@ func TestOrganizationGitHubAppIntegrationResource_Schema(t *testing.T) {
 	assertResourceStringAttribute(t, attrs, "app_id", true, false, false, false)
 	assertResourceStringAttribute(t, attrs, "app_slug", true, false, false, false)
 	assertResourceStringAttribute(t, attrs, "client_id", true, false, false, false)
-	assertResourceStringAttribute(t, attrs, "private_key_pem", true, false, false, true)
-	assertResourceStringAttribute(t, attrs, "webhook_secret", true, false, false, true)
+	assertResourceStringAttribute(t, attrs, "private_key_pem_wo", true, false, false, true)
+	assertResourceStringAttribute(t, attrs, "webhook_secret_wo", true, false, false, true)
 	assertResourceStringAttribute(t, attrs, "scope", false, false, true, false)
 }
 

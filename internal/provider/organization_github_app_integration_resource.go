@@ -27,15 +27,15 @@ func NewOrganizationGitHubAppIntegrationResource() resource.Resource {
 }
 
 type OrganizationGitHubAppIntegrationResourceModel struct {
-	OrgName       types.String `tfsdk:"org_name"`
-	ID            types.String `tfsdk:"id"`
-	Name          types.String `tfsdk:"name"`
-	AppID         types.String `tfsdk:"app_id"`
-	AppSlug       types.String `tfsdk:"app_slug"`
-	ClientID      types.String `tfsdk:"client_id"`
-	PrivateKeyPem types.String `tfsdk:"private_key_pem"`
-	WebhookSecret types.String `tfsdk:"webhook_secret"`
-	Scope         types.String `tfsdk:"scope"`
+	OrgName         types.String `tfsdk:"org_name"`
+	ID              types.String `tfsdk:"id"`
+	Name            types.String `tfsdk:"name"`
+	AppID           types.String `tfsdk:"app_id"`
+	AppSlug         types.String `tfsdk:"app_slug"`
+	ClientID        types.String `tfsdk:"client_id"`
+	PrivateKeyPemWO types.String `tfsdk:"private_key_pem_wo"`
+	WebhookSecretWO types.String `tfsdk:"webhook_secret_wo"`
+	Scope           types.String `tfsdk:"scope"`
 }
 
 func (r *OrganizationGitHubAppIntegrationResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -76,13 +76,13 @@ func (r *OrganizationGitHubAppIntegrationResource) Schema(ctx context.Context, r
 				Required:            true,
 				MarkdownDescription: "GitHub App client ID.",
 			},
-			"private_key_pem": schema.StringAttribute{
+			"private_key_pem_wo": schema.StringAttribute{
 				Required:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
 				MarkdownDescription: "GitHub App private key PEM.",
 			},
-			"webhook_secret": schema.StringAttribute{
+			"webhook_secret_wo": schema.StringAttribute{
 				Required:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
@@ -137,8 +137,8 @@ func (r *OrganizationGitHubAppIntegrationResource) Create(ctx context.Context, r
 		ClientId:      plan.ClientID.ValueString(),
 		Name:          plan.Name.ValueString(),
 		Scope:         sdk.CreateGitHubConnectionRequestScopeOrg,
-		PrivateKeyPem: stringPointerFromConfig(config.PrivateKeyPem),
-		WebhookSecret: stringPointerFromConfig(config.WebhookSecret),
+		PrivateKeyPem: stringPointerFromConfig(config.PrivateKeyPemWO),
+		WebhookSecret: stringPointerFromConfig(config.WebhookSecretWO),
 	}
 
 	rsp, err := r.client.CreateOrganizationGitHubIntegrationWithResponse(ctx, plan.OrgName.ValueString(), body)
@@ -246,12 +246,12 @@ func (r *OrganizationGitHubAppIntegrationResource) Update(ctx context.Context, r
 		clientID := plan.ClientID.ValueString()
 		body.ClientId = &clientID
 	}
-	if !config.PrivateKeyPem.IsNull() && !config.PrivateKeyPem.IsUnknown() {
-		privateKey := config.PrivateKeyPem.ValueString()
+	if !config.PrivateKeyPemWO.IsNull() && !config.PrivateKeyPemWO.IsUnknown() {
+		privateKey := config.PrivateKeyPemWO.ValueString()
 		body.PrivateKeyPem = &privateKey
 	}
-	if !config.WebhookSecret.IsNull() && !config.WebhookSecret.IsUnknown() {
-		webhookSecret := config.WebhookSecret.ValueString()
+	if !config.WebhookSecretWO.IsNull() && !config.WebhookSecretWO.IsUnknown() {
+		webhookSecret := config.WebhookSecretWO.ValueString()
 		body.WebhookSecret = &webhookSecret
 	}
 

@@ -64,8 +64,8 @@ func TestNomatronProvider_Resources(t *testing.T) {
 
 	resources := p.Resources(context.Background())
 
-	if len(resources) != 17 {
-		t.Fatalf("expected 17 resources, got %d", len(resources))
+	if len(resources) != 19 {
+		t.Fatalf("expected 19 resources, got %d", len(resources))
 	}
 
 	agentResource := resources[0]()
@@ -131,94 +131,112 @@ func TestNomatronProvider_Resources(t *testing.T) {
 		t.Fatalf("expected seventh resource to be *NomadClusterResource, got %T", nomadClusterResource)
 	}
 
-	organizationNomadClusterResource := resources[7]()
-	if organizationNomadClusterResource == nil {
+	oidcGroupMappingResource := resources[7]()
+	if oidcGroupMappingResource == nil {
 		t.Fatal("expected eighth resource factory to return a non-nil resource")
 	}
 
-	if _, ok := organizationNomadClusterResource.(*OrganizationNomadClusterResource); !ok {
-		t.Fatalf("expected eighth resource to be *OrganizationNomadClusterResource, got %T", organizationNomadClusterResource)
+	if _, ok := oidcGroupMappingResource.(*OIDCGroupMappingResource); !ok {
+		t.Fatalf("expected eighth resource to be *OIDCGroupMappingResource, got %T", oidcGroupMappingResource)
 	}
 
-	groupMemberResource := resources[8]()
-	if groupMemberResource == nil {
+	oidcProviderResource := resources[8]()
+	if oidcProviderResource == nil {
 		t.Fatal("expected ninth resource factory to return a non-nil resource")
 	}
 
-	if _, ok := groupMemberResource.(*GroupMemberResource); !ok {
-		t.Fatalf("expected ninth resource to be *GroupMemberResource, got %T", groupMemberResource)
+	if _, ok := oidcProviderResource.(*OIDCProviderResource); !ok {
+		t.Fatalf("expected ninth resource to be *OIDCProviderResource, got %T", oidcProviderResource)
 	}
 
-	groupResource := resources[9]()
-	if groupResource == nil {
+	organizationNomadClusterResource := resources[9]()
+	if organizationNomadClusterResource == nil {
 		t.Fatal("expected tenth resource factory to return a non-nil resource")
 	}
 
-	if _, ok := groupResource.(*GroupResource); !ok {
-		t.Fatalf("expected tenth resource to be *GroupResource, got %T", groupResource)
+	if _, ok := organizationNomadClusterResource.(*OrganizationNomadClusterResource); !ok {
+		t.Fatalf("expected tenth resource to be *OrganizationNomadClusterResource, got %T", organizationNomadClusterResource)
 	}
 
-	organizationMemberResource := resources[10]()
-	if organizationMemberResource == nil {
+	groupMemberResource := resources[10]()
+	if groupMemberResource == nil {
 		t.Fatal("expected eleventh resource factory to return a non-nil resource")
 	}
 
-	if _, ok := organizationMemberResource.(*OrganizationMemberResource); !ok {
-		t.Fatalf("expected eleventh resource to be *OrganizationMemberResource, got %T", organizationMemberResource)
+	if _, ok := groupMemberResource.(*GroupMemberResource); !ok {
+		t.Fatalf("expected eleventh resource to be *GroupMemberResource, got %T", groupMemberResource)
 	}
 
-	organizationResource := resources[11]()
-	if organizationResource == nil {
+	groupResource := resources[11]()
+	if groupResource == nil {
 		t.Fatal("expected twelfth resource factory to return a non-nil resource")
 	}
 
-	if _, ok := organizationResource.(*OrganizationResource); !ok {
-		t.Fatalf("expected twelfth resource to be *OrganizationResource, got %T", organizationResource)
+	if _, ok := groupResource.(*GroupResource); !ok {
+		t.Fatalf("expected twelfth resource to be *GroupResource, got %T", groupResource)
 	}
 
-	roleResource := resources[12]()
-	if roleResource == nil {
+	organizationMemberResource := resources[12]()
+	if organizationMemberResource == nil {
 		t.Fatal("expected thirteenth resource factory to return a non-nil resource")
 	}
 
-	if _, ok := roleResource.(*RoleResource); !ok {
-		t.Fatalf("expected thirteenth resource to be *RoleResource, got %T", roleResource)
+	if _, ok := organizationMemberResource.(*OrganizationMemberResource); !ok {
+		t.Fatalf("expected thirteenth resource to be *OrganizationMemberResource, got %T", organizationMemberResource)
 	}
 
-	roleAssignmentResource := resources[13]()
-	if roleAssignmentResource == nil {
+	organizationResource := resources[13]()
+	if organizationResource == nil {
 		t.Fatal("expected fourteenth resource factory to return a non-nil resource")
 	}
 
-	if _, ok := roleAssignmentResource.(*RoleAssignmentResource); !ok {
-		t.Fatalf("expected fourteenth resource to be *RoleAssignmentResource, got %T", roleAssignmentResource)
+	if _, ok := organizationResource.(*OrganizationResource); !ok {
+		t.Fatalf("expected fourteenth resource to be *OrganizationResource, got %T", organizationResource)
 	}
 
-	serviceAccountResource := resources[14]()
-	if serviceAccountResource == nil {
+	roleResource := resources[14]()
+	if roleResource == nil {
 		t.Fatal("expected fifteenth resource factory to return a non-nil resource")
 	}
 
-	if _, ok := serviceAccountResource.(*ServiceAccountResource); !ok {
-		t.Fatalf("expected fifteenth resource to be *ServiceAccountResource, got %T", serviceAccountResource)
+	if _, ok := roleResource.(*RoleResource); !ok {
+		t.Fatalf("expected fifteenth resource to be *RoleResource, got %T", roleResource)
 	}
 
-	variableResource := resources[15]()
-	if variableResource == nil {
+	roleAssignmentResource := resources[15]()
+	if roleAssignmentResource == nil {
 		t.Fatal("expected sixteenth resource factory to return a non-nil resource")
 	}
 
-	if _, ok := variableResource.(*VariableResource); !ok {
-		t.Fatalf("expected sixteenth resource to be *VariableResource, got %T", variableResource)
+	if _, ok := roleAssignmentResource.(*RoleAssignmentResource); !ok {
+		t.Fatalf("expected sixteenth resource to be *RoleAssignmentResource, got %T", roleAssignmentResource)
 	}
 
-	userResource := resources[16]()
-	if userResource == nil {
+	serviceAccountResource := resources[16]()
+	if serviceAccountResource == nil {
 		t.Fatal("expected seventeenth resource factory to return a non-nil resource")
 	}
 
+	if _, ok := serviceAccountResource.(*ServiceAccountResource); !ok {
+		t.Fatalf("expected seventeenth resource to be *ServiceAccountResource, got %T", serviceAccountResource)
+	}
+
+	variableResource := resources[17]()
+	if variableResource == nil {
+		t.Fatal("expected eighteenth resource factory to return a non-nil resource")
+	}
+
+	if _, ok := variableResource.(*VariableResource); !ok {
+		t.Fatalf("expected eighteenth resource to be *VariableResource, got %T", variableResource)
+	}
+
+	userResource := resources[18]()
+	if userResource == nil {
+		t.Fatal("expected nineteenth resource factory to return a non-nil resource")
+	}
+
 	if _, ok := userResource.(*UserResource); !ok {
-		t.Fatalf("expected seventeenth resource to be *UserResource, got %T", userResource)
+		t.Fatalf("expected nineteenth resource to be *UserResource, got %T", userResource)
 	}
 }
 
@@ -229,8 +247,8 @@ func TestNomatronProvider_DataSources(t *testing.T) {
 
 	dataSources := p.DataSources(context.Background())
 
-	if len(dataSources) != 15 {
-		t.Fatalf("expected 15 data sources, got %d", len(dataSources))
+	if len(dataSources) != 17 {
+		t.Fatalf("expected 17 data sources, got %d", len(dataSources))
 	}
 
 	agentDS := dataSources[0]()
@@ -296,76 +314,94 @@ func TestNomatronProvider_DataSources(t *testing.T) {
 		t.Fatalf("expected seventh data source to be *NomadClusterDataSource, got %T", nomadClusterDS)
 	}
 
-	organizationNomadClusterDS := dataSources[7]()
-	if organizationNomadClusterDS == nil {
+	oidcGroupMappingDS := dataSources[7]()
+	if oidcGroupMappingDS == nil {
 		t.Fatal("expected eighth data source factory to return a non-nil data source")
 	}
 
-	if _, ok := organizationNomadClusterDS.(*OrganizationNomadClusterDataSource); !ok {
-		t.Fatalf("expected eighth data source to be *OrganizationNomadClusterDataSource, got %T", organizationNomadClusterDS)
+	if _, ok := oidcGroupMappingDS.(*OIDCGroupMappingDataSource); !ok {
+		t.Fatalf("expected eighth data source to be *OIDCGroupMappingDataSource, got %T", oidcGroupMappingDS)
 	}
 
-	groupMemberDS := dataSources[8]()
-	if groupMemberDS == nil {
+	oidcProviderDS := dataSources[8]()
+	if oidcProviderDS == nil {
 		t.Fatal("expected ninth data source factory to return a non-nil data source")
 	}
 
-	if _, ok := groupMemberDS.(*GroupMemberDataSource); !ok {
-		t.Fatalf("expected ninth data source to be *GroupMemberDataSource, got %T", groupMemberDS)
+	if _, ok := oidcProviderDS.(*OIDCProviderDataSource); !ok {
+		t.Fatalf("expected ninth data source to be *OIDCProviderDataSource, got %T", oidcProviderDS)
 	}
 
-	groupDS := dataSources[9]()
-	if groupDS == nil {
+	organizationNomadClusterDS := dataSources[9]()
+	if organizationNomadClusterDS == nil {
 		t.Fatal("expected tenth data source factory to return a non-nil data source")
 	}
 
-	if _, ok := groupDS.(*GroupDataSource); !ok {
-		t.Fatalf("expected tenth data source to be *GroupDataSource, got %T", groupDS)
+	if _, ok := organizationNomadClusterDS.(*OrganizationNomadClusterDataSource); !ok {
+		t.Fatalf("expected tenth data source to be *OrganizationNomadClusterDataSource, got %T", organizationNomadClusterDS)
 	}
 
-	organizationMemberDS := dataSources[10]()
-	if organizationMemberDS == nil {
+	groupMemberDS := dataSources[10]()
+	if groupMemberDS == nil {
 		t.Fatal("expected eleventh data source factory to return a non-nil data source")
 	}
 
-	if _, ok := organizationMemberDS.(*OrganizationMemberDataSource); !ok {
-		t.Fatalf("expected eleventh data source to be *OrganizationMemberDataSource, got %T", organizationMemberDS)
+	if _, ok := groupMemberDS.(*GroupMemberDataSource); !ok {
+		t.Fatalf("expected eleventh data source to be *GroupMemberDataSource, got %T", groupMemberDS)
 	}
 
-	organizationDS := dataSources[11]()
-	if organizationDS == nil {
+	groupDS := dataSources[11]()
+	if groupDS == nil {
 		t.Fatal("expected twelfth data source factory to return a non-nil data source")
 	}
 
-	if _, ok := organizationDS.(*OrganizationDataSource); !ok {
-		t.Fatalf("expected twelfth data source to be *OrganizationDataSource, got %T", organizationDS)
+	if _, ok := groupDS.(*GroupDataSource); !ok {
+		t.Fatalf("expected twelfth data source to be *GroupDataSource, got %T", groupDS)
 	}
 
-	roleDS := dataSources[12]()
-	if roleDS == nil {
+	organizationMemberDS := dataSources[12]()
+	if organizationMemberDS == nil {
 		t.Fatal("expected thirteenth data source factory to return a non-nil data source")
 	}
 
-	if _, ok := roleDS.(*RoleDataSource); !ok {
-		t.Fatalf("expected thirteenth data source to be *RoleDataSource, got %T", roleDS)
+	if _, ok := organizationMemberDS.(*OrganizationMemberDataSource); !ok {
+		t.Fatalf("expected thirteenth data source to be *OrganizationMemberDataSource, got %T", organizationMemberDS)
 	}
 
-	serviceAccountsDS := dataSources[13]()
-	if serviceAccountsDS == nil {
+	organizationDS := dataSources[13]()
+	if organizationDS == nil {
 		t.Fatal("expected fourteenth data source factory to return a non-nil data source")
 	}
 
-	if _, ok := serviceAccountsDS.(*ServiceAccountDataSource); !ok {
-		t.Fatalf("expected fourteenth data source to be *ServiceAccountDataSource, got %T", serviceAccountsDS)
+	if _, ok := organizationDS.(*OrganizationDataSource); !ok {
+		t.Fatalf("expected fourteenth data source to be *OrganizationDataSource, got %T", organizationDS)
 	}
 
-	usersDS := dataSources[14]()
-	if usersDS == nil {
+	roleDS := dataSources[14]()
+	if roleDS == nil {
 		t.Fatal("expected fifteenth data source factory to return a non-nil data source")
 	}
 
+	if _, ok := roleDS.(*RoleDataSource); !ok {
+		t.Fatalf("expected fifteenth data source to be *RoleDataSource, got %T", roleDS)
+	}
+
+	serviceAccountsDS := dataSources[15]()
+	if serviceAccountsDS == nil {
+		t.Fatal("expected sixteenth data source factory to return a non-nil data source")
+	}
+
+	if _, ok := serviceAccountsDS.(*ServiceAccountDataSource); !ok {
+		t.Fatalf("expected sixteenth data source to be *ServiceAccountDataSource, got %T", serviceAccountsDS)
+	}
+
+	usersDS := dataSources[16]()
+	if usersDS == nil {
+		t.Fatal("expected seventeenth data source factory to return a non-nil data source")
+	}
+
 	if _, ok := usersDS.(*UsersDataSource); !ok {
-		t.Fatalf("expected fifteenth data source to be *UsersDataSource, got %T", usersDS)
+		t.Fatalf("expected seventeenth data source to be *UsersDataSource, got %T", usersDS)
 	}
 }
 

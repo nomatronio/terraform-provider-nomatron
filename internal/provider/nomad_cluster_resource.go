@@ -35,10 +35,10 @@ type NomadClusterResourceModel struct {
 	Address          types.String `tfsdk:"address"`
 	AgentID          types.String `tfsdk:"agent_id"`
 	SkipVerify       types.Bool   `tfsdk:"skip_verify"`
-	AclToken         types.String `tfsdk:"acl_token"`
-	CaCert           types.String `tfsdk:"ca_cert"`
-	TlsCert          types.String `tfsdk:"tls_cert"`
-	TlsKey           types.String `tfsdk:"tls_key"`
+	AclTokenWO       types.String `tfsdk:"acl_token_wo"`
+	CaCertWO         types.String `tfsdk:"ca_cert_wo"`
+	TlsCertWO        types.String `tfsdk:"tls_cert_wo"`
+	TlsKeyWO         types.String `tfsdk:"tls_key_wo"`
 	Scope            types.String `tfsdk:"scope"`
 	CreatedAt        types.String `tfsdk:"created_at"`
 	UpdatedAt        types.String `tfsdk:"updated_at"`
@@ -91,25 +91,25 @@ func (r *NomadClusterResource) Schema(ctx context.Context, req resource.SchemaRe
 					boolplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"acl_token": schema.StringAttribute{
+			"acl_token_wo": schema.StringAttribute{
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
 				MarkdownDescription: "Nomad ACL token used in direct mode.",
 			},
-			"ca_cert": schema.StringAttribute{
+			"ca_cert_wo": schema.StringAttribute{
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
 				MarkdownDescription: "PEM encoded CA certificate for direct mode.",
 			},
-			"tls_cert": schema.StringAttribute{
+			"tls_cert_wo": schema.StringAttribute{
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
 				MarkdownDescription: "PEM encoded client certificate for direct mode.",
 			},
-			"tls_key": schema.StringAttribute{
+			"tls_key_wo": schema.StringAttribute{
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
@@ -419,20 +419,20 @@ func buildCreateClusterBody(plan, config NomadClusterResourceModel) (sdk.CreateG
 		body.SkipVerify = &skipVerify
 	}
 
-	if !config.AclToken.IsNull() && !config.AclToken.IsUnknown() {
-		aclToken := config.AclToken.ValueString()
+	if !config.AclTokenWO.IsNull() && !config.AclTokenWO.IsUnknown() {
+		aclToken := config.AclTokenWO.ValueString()
 		body.AclToken = &aclToken
 	}
-	if !config.CaCert.IsNull() && !config.CaCert.IsUnknown() {
-		caCert := config.CaCert.ValueString()
+	if !config.CaCertWO.IsNull() && !config.CaCertWO.IsUnknown() {
+		caCert := config.CaCertWO.ValueString()
 		body.CaCert = &caCert
 	}
-	if !config.TlsCert.IsNull() && !config.TlsCert.IsUnknown() {
-		tlsCert := config.TlsCert.ValueString()
+	if !config.TlsCertWO.IsNull() && !config.TlsCertWO.IsUnknown() {
+		tlsCert := config.TlsCertWO.ValueString()
 		body.TlsCert = &tlsCert
 	}
-	if !config.TlsKey.IsNull() && !config.TlsKey.IsUnknown() {
-		tlsKey := config.TlsKey.ValueString()
+	if !config.TlsKeyWO.IsNull() && !config.TlsKeyWO.IsUnknown() {
+		tlsKey := config.TlsKeyWO.ValueString()
 		body.TlsKey = &tlsKey
 	}
 
@@ -469,20 +469,20 @@ func buildUpdateClusterBody(plan, state, config NomadClusterResourceModel) (sdk.
 		body.SkipVerify = &skipVerify
 	}
 
-	if !config.AclToken.IsNull() && !config.AclToken.IsUnknown() {
-		aclToken := config.AclToken.ValueString()
+	if !config.AclTokenWO.IsNull() && !config.AclTokenWO.IsUnknown() {
+		aclToken := config.AclTokenWO.ValueString()
 		body.AclToken = &aclToken
 	}
-	if !config.CaCert.IsNull() && !config.CaCert.IsUnknown() {
-		caCert := config.CaCert.ValueString()
+	if !config.CaCertWO.IsNull() && !config.CaCertWO.IsUnknown() {
+		caCert := config.CaCertWO.ValueString()
 		body.CaCert = &caCert
 	}
-	if !config.TlsCert.IsNull() && !config.TlsCert.IsUnknown() {
-		tlsCert := config.TlsCert.ValueString()
+	if !config.TlsCertWO.IsNull() && !config.TlsCertWO.IsUnknown() {
+		tlsCert := config.TlsCertWO.ValueString()
 		body.TlsCert = &tlsCert
 	}
-	if !config.TlsKey.IsNull() && !config.TlsKey.IsUnknown() {
-		tlsKey := config.TlsKey.ValueString()
+	if !config.TlsKeyWO.IsNull() && !config.TlsKeyWO.IsUnknown() {
+		tlsKey := config.TlsKeyWO.ValueString()
 		body.TlsKey = &tlsKey
 	}
 
@@ -529,10 +529,10 @@ func stateFromNomadCluster(base NomadClusterResourceModel, cluster sdk.Cluster) 
 		Address:          address,
 		AgentID:          agentID,
 		SkipVerify:       types.BoolValue(cluster.SkipVerify),
-		AclToken:         base.AclToken,
-		CaCert:           base.CaCert,
-		TlsCert:          base.TlsCert,
-		TlsKey:           base.TlsKey,
+		AclTokenWO:       base.AclTokenWO,
+		CaCertWO:         base.CaCertWO,
+		TlsCertWO:        base.TlsCertWO,
+		TlsKeyWO:         base.TlsKeyWO,
 		Scope:            types.StringValue(cluster.Scope),
 		CreatedAt:        createdAt,
 		UpdatedAt:        updatedAt,

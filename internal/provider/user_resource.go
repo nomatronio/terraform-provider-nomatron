@@ -32,7 +32,7 @@ type UserResourceModel struct {
 	ID           types.String `tfsdk:"id"`
 	Username     types.String `tfsdk:"username"`
 	Name         types.String `tfsdk:"name"`
-	Password     types.String `tfsdk:"password"`
+	PasswordWO   types.String `tfsdk:"password_wo"`
 	Metadata     types.Map    `tfsdk:"metadata"`
 	AuthProvider types.String `tfsdk:"auth_provider"`
 	IsActive     types.Bool   `tfsdk:"is_active"`
@@ -60,7 +60,7 @@ func (r *UserResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
-			"password": schema.StringAttribute{
+			"password_wo": schema.StringAttribute{
 				Required:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
@@ -137,7 +137,7 @@ func (r *UserResource) Create(ctx context.Context, req resource.CreateRequest, r
 	body := sdk.CreateUserJSONRequestBody{
 		Username: plan.Username.ValueString(),
 		Name:     plan.Name.ValueString(),
-		Password: config.Password.ValueString(),
+		Password: config.PasswordWO.ValueString(),
 	}
 
 	if !plan.Metadata.IsNull() && !plan.Metadata.IsUnknown() {
@@ -380,7 +380,7 @@ func stateFromUser(base UserResourceModel, u sdk.User) (UserResourceModel, diag.
 		ID:           types.StringValue(u.Id.String()),
 		Username:     types.StringValue(u.Username),
 		Name:         types.StringValue(u.Name),
-		Password:     base.Password,
+		PasswordWO:   base.PasswordWO,
 		Metadata:     metadata,
 		AuthProvider: types.StringValue(u.AuthProvider),
 		IsActive:     types.BoolValue(u.IsActive),

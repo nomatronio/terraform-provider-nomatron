@@ -36,10 +36,10 @@ type OrganizationNomadClusterResourceModel struct {
 	Address          types.String `tfsdk:"address"`
 	AgentID          types.String `tfsdk:"agent_id"`
 	SkipVerify       types.Bool   `tfsdk:"skip_verify"`
-	AclToken         types.String `tfsdk:"acl_token"`
-	CaCert           types.String `tfsdk:"ca_cert"`
-	TlsCert          types.String `tfsdk:"tls_cert"`
-	TlsKey           types.String `tfsdk:"tls_key"`
+	AclTokenWO       types.String `tfsdk:"acl_token_wo"`
+	CaCertWO         types.String `tfsdk:"ca_cert_wo"`
+	TlsCertWO        types.String `tfsdk:"tls_cert_wo"`
+	TlsKeyWO         types.String `tfsdk:"tls_key_wo"`
 	Scope            types.String `tfsdk:"scope"`
 	CreatedAt        types.String `tfsdk:"created_at"`
 	UpdatedAt        types.String `tfsdk:"updated_at"`
@@ -99,25 +99,25 @@ func (r *OrganizationNomadClusterResource) Schema(ctx context.Context, req resou
 					boolplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"acl_token": schema.StringAttribute{
+			"acl_token_wo": schema.StringAttribute{
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
 				MarkdownDescription: "Nomad ACL token used in direct mode.",
 			},
-			"ca_cert": schema.StringAttribute{
+			"ca_cert_wo": schema.StringAttribute{
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
 				MarkdownDescription: "PEM encoded CA certificate for direct mode.",
 			},
-			"tls_cert": schema.StringAttribute{
+			"tls_cert_wo": schema.StringAttribute{
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
 				MarkdownDescription: "PEM encoded client certificate for direct mode.",
 			},
-			"tls_key": schema.StringAttribute{
+			"tls_key_wo": schema.StringAttribute{
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
@@ -184,10 +184,10 @@ func (r *OrganizationNomadClusterResource) Create(ctx context.Context, req resou
 			SkipVerify:       plan.SkipVerify,
 		},
 		NomadClusterResourceModel{
-			AclToken: config.AclToken,
-			CaCert:   config.CaCert,
-			TlsCert:  config.TlsCert,
-			TlsKey:   config.TlsKey,
+			AclTokenWO: config.AclTokenWO,
+			CaCertWO:   config.CaCertWO,
+			TlsCertWO:  config.TlsCertWO,
+			TlsKeyWO:   config.TlsKeyWO,
 		},
 	)
 	resp.Diagnostics.Append(diags...)
@@ -303,10 +303,10 @@ func (r *OrganizationNomadClusterResource) Update(ctx context.Context, req resou
 			SkipVerify:       state.SkipVerify,
 		},
 		NomadClusterResourceModel{
-			AclToken: config.AclToken,
-			CaCert:   config.CaCert,
-			TlsCert:  config.TlsCert,
-			TlsKey:   config.TlsKey,
+			AclTokenWO: config.AclTokenWO,
+			CaCertWO:   config.CaCertWO,
+			TlsCertWO:  config.TlsCertWO,
+			TlsKeyWO:   config.TlsKeyWO,
 		},
 	)
 	resp.Diagnostics.Append(diags...)

@@ -54,7 +54,7 @@ func TestUserResource_Schema(t *testing.T) {
 
 	assertResourceStringAttribute(t, attrs, "id", false, false, true, false)
 	assertResourceStringAttribute(t, attrs, "username", true, false, false, false)
-	assertResourceStringAttribute(t, attrs, "password", true, false, false, true)
+	assertResourceStringAttribute(t, attrs, "password_wo", true, false, false, true)
 	assertResourceMapAttribute(t, attrs, "metadata", false, true, false)
 	assertResourceStringAttribute(t, attrs, "name", true, false, false, false)
 	assertResourceStringAttribute(t, attrs, "auth_provider", false, false, true, false)
@@ -62,7 +62,7 @@ func TestUserResource_Schema(t *testing.T) {
 	assertResourceStringAttribute(t, attrs, "created_at", false, false, true, false)
 	assertResourceStringAttribute(t, attrs, "created_by", false, false, true, false)
 
-	passwordAttr := attrs["password"].(schema.StringAttribute)
+	passwordAttr := attrs["password_wo"].(schema.StringAttribute)
 	if !passwordAttr.WriteOnly {
 		t.Fatal("expected password to be write-only")
 	}
@@ -158,7 +158,7 @@ func TestStateFromUser_WithMetadataAndUUIDCreatedBy(t *testing.T) {
 	}
 
 	base := UserResourceModel{
-		Password: types.StringValue("super-secret"),
+		PasswordWO: types.StringValue("super-secret"),
 	}
 
 	user := sdk.User{
@@ -186,8 +186,8 @@ func TestStateFromUser_WithMetadataAndUUIDCreatedBy(t *testing.T) {
 	if state.Name.ValueString() != "Robert Barnes" {
 		t.Fatalf("unexpected name: %q", state.Name.ValueString())
 	}
-	if state.Password.ValueString() != "super-secret" {
-		t.Fatalf("expected password to be preserved from base, got %q", state.Password.ValueString())
+	if state.PasswordWO.ValueString() != "super-secret" {
+		t.Fatalf("expected password to be preserved from base, got %q", state.PasswordWO.ValueString())
 	}
 	if state.AuthProvider.ValueString() != "nomatron" {
 		t.Fatalf("unexpected auth_provider: %q", state.AuthProvider.ValueString())
@@ -227,7 +227,7 @@ func TestStateFromUser_WithNilMetadataAndStringCreatedBy(t *testing.T) {
 	}
 
 	base := UserResourceModel{
-		Password: types.StringNull(),
+		PasswordWO: types.StringNull(),
 	}
 
 	user := sdk.User{
@@ -274,8 +274,8 @@ func TestStateFromUser_PreservesBaseMetadataWhenResponseOmitsIt(t *testing.T) {
 	}
 
 	base := UserResourceModel{
-		Metadata: baseMetadata,
-		Password: types.StringNull(),
+		Metadata:   baseMetadata,
+		PasswordWO: types.StringNull(),
 	}
 
 	user := sdk.User{
