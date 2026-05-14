@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/nomatronio/nomatron/pkg/api/sdk"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -216,6 +217,28 @@ func TestStateFromApplication_WithNullOptionalFields(t *testing.T) {
 	}
 	if !state.UpdatedBy.IsNull() {
 		t.Fatal("expected updated_by to be null")
+	}
+}
+
+func TestLowerCaseStringPlanModifier(t *testing.T) {
+	t.Parallel()
+
+	resp := &planmodifier.StringResponse{}
+
+	lowerCaseString().PlanModifyString(context.Background(), planmodifier.StringRequest{
+		PlanValue: types.StringValue("GitHub"),
+	}, resp)
+
+	if resp.PlanValue.ValueString() != "github" {
+		t.Fatalf("expected normalized plan value, got %q", resp.PlanValue.ValueString())
+	}
+}
+
+func TestNormalizeProviderString(t *testing.T) {
+	t.Parallel()
+
+	if got := normalizeProviderString(" GitHub "); got != "github" {
+		t.Fatalf("expected github, got %q", got)
 	}
 }
 

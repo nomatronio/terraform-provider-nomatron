@@ -102,6 +102,7 @@ func (r *ApplicationResource) Schema(ctx context.Context, req resource.SchemaReq
 				Computed:            true,
 				MarkdownDescription: "Git provider for the repository, such as `github`.",
 				PlanModifiers: []planmodifier.String{
+					lowerCaseString(),
 					stringplanmodifier.RequiresReplace(),
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -212,7 +213,7 @@ func (r *ApplicationResource) Create(ctx context.Context, req resource.CreateReq
 		body.Description = &description
 	}
 	if !plan.GitProvider.IsNull() && !plan.GitProvider.IsUnknown() && plan.GitProvider.ValueString() != "" {
-		gitProvider := sdk.GitProvider(plan.GitProvider.ValueString())
+		gitProvider := sdk.GitProvider(normalizeProviderString(plan.GitProvider.ValueString()))
 		body.GitProvider = &gitProvider
 	}
 	if !plan.Ref.IsNull() && !plan.Ref.IsUnknown() && plan.Ref.ValueString() != "" {
