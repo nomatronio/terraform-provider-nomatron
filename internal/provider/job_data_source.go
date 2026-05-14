@@ -181,7 +181,7 @@ func flattenJobDataSource(base JobDataSourceModel, job sdk.AppJob) JobDataSource
 		DefaultNamespace: defaultNamespace,
 		JobspecPath:      types.StringValue(job.JobspecPath),
 		JobspecType:      types.StringValue(job.JobspecType),
-		IsPrimary:        types.BoolValue(job.IsPrimary),
+		IsPrimary:        types.BoolValue(job.Priority == primaryJobPriority),
 		CreatedAt:        createdAt,
 		UpdatedAt:        updatedAt,
 	}

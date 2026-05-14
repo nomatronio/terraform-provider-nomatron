@@ -21,6 +21,8 @@ import (
 var _ resource.Resource = &JobResource{}
 var _ resource.ResourceWithImportState = &JobResource{}
 
+const primaryJobPriority = 10
+
 type JobResource struct {
 	client *sdk.ClientWithResponses
 }
@@ -432,9 +434,9 @@ func buildCreateAppJobBody(plan JobResourceModel) (sdk.CreateAppJobJSONRequestBo
 		defaultNamespace := plan.DefaultNamespace.ValueString()
 		body.DefaultNamespace = &defaultNamespace
 	}
-	if !plan.IsPrimary.IsNull() && !plan.IsPrimary.IsUnknown() {
-		isPrimary := plan.IsPrimary.ValueBool()
-		body.IsPrimary = &isPrimary
+	if !plan.IsPrimary.IsNull() && !plan.IsPrimary.IsUnknown() && plan.IsPrimary.ValueBool() {
+		priority := primaryJobPriority
+		body.Priority = &priority
 	}
 	if !plan.Slug.IsNull() && !plan.Slug.IsUnknown() && plan.Slug.ValueString() != "" {
 		slug := plan.Slug.ValueString()
@@ -477,9 +479,9 @@ func buildUpdateAppJobBody(plan, state JobResourceModel) (sdk.UpdateAppJobJSONRe
 		jobspecType := sdk.UpdateAppJobRequestJobspecType(plan.JobspecType.ValueString())
 		body.JobspecType = &jobspecType
 	}
-	if boolValueChanged(plan.IsPrimary, state.IsPrimary) && !plan.IsPrimary.IsNull() && !plan.IsPrimary.IsUnknown() {
-		isPrimary := plan.IsPrimary.ValueBool()
-		body.IsPrimary = &isPrimary
+	if boolValueChanged(plan.IsPrimary, state.IsPrimary) && !plan.IsPrimary.IsNull() && !plan.IsPrimary.IsUnknown() && plan.IsPrimary.ValueBool() {
+		priority := primaryJobPriority
+		body.Priority = &priority
 	}
 
 	return body, diags
@@ -531,7 +533,7 @@ func stateFromAppJob(base JobResourceModel, job sdk.AppJob) JobResourceModel {
 		DefaultNamespace: defaultNamespace,
 		JobspecPath:      types.StringValue(job.JobspecPath),
 		JobspecType:      types.StringValue(job.JobspecType),
-		IsPrimary:        types.BoolValue(job.IsPrimary),
+		IsPrimary:        types.BoolValue(job.Priority == primaryJobPriority),
 		CreatedAt:        createdAt,
 		UpdatedAt:        updatedAt,
 	}

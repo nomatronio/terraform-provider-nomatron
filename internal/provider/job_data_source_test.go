@@ -148,7 +148,7 @@ func TestFlattenJobDataSource(t *testing.T) {
 		DefaultNamespace: "payments",
 		JobspecPath:      "jobs/web.nomad.hcl",
 		JobspecType:      "hcl",
-		IsPrimary:        true,
+		Priority:         primaryJobPriority,
 		CreatedAt:        createdAt,
 		UpdatedAt:        updatedAt,
 	})
@@ -209,7 +209,7 @@ func TestFlattenJobDataSource_WithNullOptionalFields(t *testing.T) {
 		Name:        "Web",
 		JobspecPath: "jobs/web.nomad.hcl",
 		JobspecType: "hcl",
-		IsPrimary:   false,
+		Priority:    primaryJobPriority * 2,
 	})
 
 	if !data.Description.IsNull() {

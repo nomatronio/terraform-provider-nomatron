@@ -103,7 +103,7 @@ func (r *GroupMemberResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	rsp, err := r.client.PutOrganizationsOrgNameGroupsGroupNameMembersUsernameWithResponse(
+	rsp, err := r.client.PutOrganizationsOrgSlugGroupsGroupNameMembersUsernameWithResponse(
 		ctx,
 		plan.OrgName.ValueString(),
 		plan.GroupName.ValueString(),
@@ -210,7 +210,7 @@ func (r *GroupMemberResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 
-	rsp, err := r.client.DeleteOrganizationsOrgNameGroupsGroupNameMembersUsernameWithResponse(ctx, orgName, groupName, username)
+	rsp, err := r.client.DeleteOrganizationsOrgSlugGroupsGroupNameMembersUsernameWithResponse(ctx, orgName, groupName, username)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed To Remove Group Member", err.Error())
 		return
@@ -269,7 +269,7 @@ func isGroupMemberNotFound(err error) bool {
 }
 
 func groupMemberExists(ctx context.Context, client *sdk.ClientWithResponses, orgName, groupName, username string) (bool, error) {
-	rsp, err := client.GetOrganizationsOrgNameGroupsGroupNameMembersWithResponse(ctx, orgName, groupName)
+	rsp, err := client.GetOrganizationsOrgSlugGroupsGroupNameMembersWithResponse(ctx, orgName, groupName)
 	if err != nil {
 		return false, err
 	}

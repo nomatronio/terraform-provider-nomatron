@@ -139,7 +139,7 @@ func (r *GroupResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	body := sdk.PostOrganizationsOrgNameGroupsJSONRequestBody{
+	body := sdk.PostOrganizationsOrgSlugGroupsJSONRequestBody{
 		Name:          plan.Name.ValueString(),
 		OwnerUsername: plan.OwnerUsername.ValueString(),
 	}
@@ -161,7 +161,7 @@ func (r *GroupResource) Create(ctx context.Context, req resource.CreateRequest, 
 		}
 	}
 
-	rsp, err := r.client.PostOrganizationsOrgNameGroupsWithResponse(ctx, plan.OrgName.ValueString(), body)
+	rsp, err := r.client.PostOrganizationsOrgSlugGroupsWithResponse(ctx, plan.OrgName.ValueString(), body)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed To Create Group", err.Error())
 		return
@@ -261,7 +261,7 @@ func (r *GroupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		return
 	}
 
-	body := sdk.PatchOrganizationsOrgNameGroupsGroupNameJSONRequestBody{}
+	body := sdk.PatchOrganizationsOrgSlugGroupsGroupNameJSONRequestBody{}
 
 	if !plan.Description.IsNull() && !plan.Description.IsUnknown() {
 		description := plan.Description.ValueString()
@@ -280,7 +280,7 @@ func (r *GroupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		}
 	}
 
-	rsp, err := r.client.PatchOrganizationsOrgNameGroupsGroupNameWithResponse(ctx, state.OrgName.ValueString(), state.Name.ValueString(), body)
+	rsp, err := r.client.PatchOrganizationsOrgSlugGroupsGroupNameWithResponse(ctx, state.OrgName.ValueString(), state.Name.ValueString(), body)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed To Update Group", err.Error())
 		return
@@ -339,7 +339,7 @@ func (r *GroupResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 		return
 	}
 
-	rsp, err := r.client.DeleteOrganizationsOrgNameGroupsGroupNameWithResponse(ctx, state.OrgName.ValueString(), state.Name.ValueString())
+	rsp, err := r.client.DeleteOrganizationsOrgSlugGroupsGroupNameWithResponse(ctx, state.OrgName.ValueString(), state.Name.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed To Delete Group", err.Error())
 		return
@@ -395,7 +395,7 @@ func isGroupNotFound(err error) bool {
 }
 
 func readGroup(ctx context.Context, client *sdk.ClientWithResponses, orgName, groupName string) (sdk.Group, error) {
-	rsp, err := client.GetOrganizationsOrgNameGroupsGroupNameWithResponse(ctx, orgName, groupName)
+	rsp, err := client.GetOrganizationsOrgSlugGroupsGroupNameWithResponse(ctx, orgName, groupName)
 	if err != nil {
 		return sdk.Group{}, err
 	}
