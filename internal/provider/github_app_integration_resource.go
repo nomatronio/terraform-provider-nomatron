@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/nomatronio/nomatron/pkg/api/sdk"
 )
@@ -66,24 +68,33 @@ func (r *GitHubAppIntegrationResource) Schema(ctx context.Context, req resource.
 				Computed:            true,
 				Default:             stringdefault.StaticString("github_com"),
 				MarkdownDescription: "GitHub provider kind. Use `github_com` for GitHub.com or `enterprise_server` for self-hosted GitHub Enterprise Server.",
+				Validators: []validator.String{
+					stringvalidator.OneOf(string(sdk.GithubCom), string(sdk.EnterpriseServer)),
+				},
 			},
 			"web_base_url": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				Default:             stringdefault.StaticString("https://github.com"),
-				MarkdownDescription: "GitHub web base URL. Required for GitHub Enterprise Server.",
+				MarkdownDescription: "GitHub web base URL. Required when `provider_kind` is `enterprise_server`; defaults server-side for `github_com`.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"api_base_url": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				Default:             stringdefault.StaticString("https://api.github.com"),
-				MarkdownDescription: "GitHub API base URL. Defaults to the GitHub.com API, or to `/api/v3` for Enterprise when omitted from the API request.",
+				MarkdownDescription: "GitHub API base URL. Defaults server-side to the GitHub.com API, or to `<web_base_url>/api/v3` for Enterprise when omitted.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"upload_base_url": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				Default:             stringdefault.StaticString("https://uploads.github.com"),
-				MarkdownDescription: "GitHub upload API base URL. Defaults to the GitHub.com uploads API, or to `/api/uploads` for Enterprise when omitted from the API request.",
+				MarkdownDescription: "GitHub upload API base URL. Defaults server-side to the GitHub.com uploads API, or to `<web_base_url>/api/uploads` for Enterprise when omitted.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"app_id": schema.StringAttribute{
 				Required:            true,

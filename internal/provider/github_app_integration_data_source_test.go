@@ -53,6 +53,10 @@ func TestGitHubAppIntegrationDataSource_Schema(t *testing.T) {
 
 	assertGitHubIntegrationDataSourceStringAttribute(t, attrs, "name", true, false, false)
 	assertGitHubIntegrationDataSourceStringAttribute(t, attrs, "id", false, false, true)
+	assertGitHubIntegrationDataSourceStringAttribute(t, attrs, "provider_kind", false, false, true)
+	assertGitHubIntegrationDataSourceStringAttribute(t, attrs, "web_base_url", false, false, true)
+	assertGitHubIntegrationDataSourceStringAttribute(t, attrs, "api_base_url", false, false, true)
+	assertGitHubIntegrationDataSourceStringAttribute(t, attrs, "upload_base_url", false, false, true)
 	assertGitHubIntegrationDataSourceStringAttribute(t, attrs, "app_id", false, false, true)
 	assertGitHubIntegrationDataSourceStringAttribute(t, attrs, "app_slug", false, false, true)
 	assertGitHubIntegrationDataSourceStringAttribute(t, attrs, "client_id", false, false, true)
@@ -125,16 +129,24 @@ func TestFlattenGitHubAppIntegrationDataSource(t *testing.T) {
 	appID := "12345"
 	appSlug := "nomatron-app"
 	clientID := "Iv1.1234567890abcdef"
+	webBaseURL := "https://github.enterprise.example"
+	apiBaseURL := "https://github.enterprise.example/api/v3"
+	uploadBaseURL := "https://github.enterprise.example/api/uploads"
+	providerKind := sdk.EnterpriseServer
 
 	data := flattenGitHubAppIntegrationDataSource(GitHubAppIntegrationDataSourceModel{
 		Name: types.StringValue("primary"),
 	}, sdk.GitHubConnection{
-		Id:       connectionID,
-		Name:     "primary",
-		AppId:    &appID,
-		AppSlug:  &appSlug,
-		ClientId: &clientID,
-		Scope:    sdk.GitHubConnectionScopeGlobal,
+		Id:            connectionID,
+		Name:          "primary",
+		AppId:         &appID,
+		AppSlug:       &appSlug,
+		ClientId:      &clientID,
+		ProviderKind:  &providerKind,
+		WebBaseUrl:    &webBaseURL,
+		ApiBaseUrl:    &apiBaseURL,
+		UploadBaseUrl: &uploadBaseURL,
+		Scope:         sdk.GitHubConnectionScopeGlobal,
 	})
 
 	if data.Name.ValueString() != "primary" {
@@ -151,6 +163,18 @@ func TestFlattenGitHubAppIntegrationDataSource(t *testing.T) {
 	}
 	if data.ClientID.ValueString() != clientID {
 		t.Fatalf("unexpected client_id: %q", data.ClientID.ValueString())
+	}
+	if data.ProviderKind.ValueString() != string(sdk.EnterpriseServer) {
+		t.Fatalf("unexpected provider_kind: %q", data.ProviderKind.ValueString())
+	}
+	if data.WebBaseURL.ValueString() != webBaseURL {
+		t.Fatalf("unexpected web_base_url: %q", data.WebBaseURL.ValueString())
+	}
+	if data.APIBaseURL.ValueString() != apiBaseURL {
+		t.Fatalf("unexpected api_base_url: %q", data.APIBaseURL.ValueString())
+	}
+	if data.UploadBaseURL.ValueString() != uploadBaseURL {
+		t.Fatalf("unexpected upload_base_url: %q", data.UploadBaseURL.ValueString())
 	}
 	if data.Scope.ValueString() != "global" {
 		t.Fatalf("unexpected scope: %q", data.Scope.ValueString())
@@ -178,6 +202,18 @@ func TestFlattenGitHubAppIntegrationDataSource_WithNullOptionalFields(t *testing
 	}
 	if !data.ClientID.IsNull() {
 		t.Fatal("expected client_id to be null")
+	}
+	if !data.ProviderKind.IsNull() {
+		t.Fatal("expected provider_kind to be null")
+	}
+	if !data.WebBaseURL.IsNull() {
+		t.Fatal("expected web_base_url to be null")
+	}
+	if !data.APIBaseURL.IsNull() {
+		t.Fatal("expected api_base_url to be null")
+	}
+	if !data.UploadBaseURL.IsNull() {
+		t.Fatal("expected upload_base_url to be null")
 	}
 }
 

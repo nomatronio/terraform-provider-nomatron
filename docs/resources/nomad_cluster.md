@@ -20,7 +20,7 @@ resource "nomatron_nomad_cluster" "example" {
   address           = "https://nomad.example.com"
   skip_verify       = false
 
-  acl_token = "sensitive-token"
+  acl_token_wo = "sensitive-token"
 }
 ```
 
@@ -35,15 +35,15 @@ resource "nomatron_nomad_cluster" "example" {
 
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
-- `acl_token` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Nomad ACL token used in direct mode.
+- `acl_token_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Nomad ACL token used in direct mode.
 - `address` (String) Nomad API address for `direct` connectivity mode.
 - `agent_id` (String) Agent ID for `agent` connectivity mode.
-- `ca_cert` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) PEM encoded CA certificate for direct mode.
+- `ca_cert_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) PEM encoded CA certificate for direct mode.
 - `connectivity_mode` (String) Connectivity mode, either `direct` or `agent`.
 - `description` (String) Cluster description.
 - `skip_verify` (Boolean) Whether TLS verification is skipped for direct connections.
-- `tls_cert` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) PEM encoded client certificate for direct mode.
-- `tls_key` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) PEM encoded client key for direct mode.
+- `tls_cert_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) PEM encoded client certificate for direct mode.
+- `tls_key_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) PEM encoded client key for direct mode.
 
 ### Read-Only
 

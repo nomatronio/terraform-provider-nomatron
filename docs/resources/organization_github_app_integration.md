@@ -14,13 +14,13 @@ Nomatron organization-scoped GitHub App integration resource.
 
 ```terraform
 resource "nomatron_organization_github_app_integration" "example" {
-  org_name        = "platform"
-  name            = "primary"
-  app_id          = "12345"
-  app_slug        = "nomatron-app"
-  client_id       = "Iv1.1234567890abcdef"
-  webhook_secret  = "super-secret"
-  private_key_pem = <<-EOT
+  org_name           = "platform"
+  name               = "primary"
+  app_id             = "12345"
+  app_slug           = "nomatron-app"
+  client_id          = "Iv1.1234567890abcdef"
+  webhook_secret_wo  = "super-secret"
+  private_key_pem_wo = <<-EOT
   -----BEGIN RSA PRIVATE KEY-----
   ...
   -----END RSA PRIVATE KEY-----
@@ -40,8 +40,16 @@ resource "nomatron_organization_github_app_integration" "example" {
 - `client_id` (String) GitHub App client ID.
 - `name` (String) Integration name.
 - `org_name` (String) Organization name that owns the integration.
-- `private_key_pem` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) GitHub App private key PEM.
-- `webhook_secret` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) GitHub App webhook secret.
+- `private_key_pem_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) GitHub App private key PEM.
+- `webhook_secret_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) GitHub App webhook secret.
+
+### Optional
+
+- `api_base_url` (String) GitHub API base URL. Defaults server-side to the GitHub.com API, or to `<web_base_url>/api/v3` for Enterprise when omitted.
+- `provider_kind` (String) GitHub provider kind. Use `github_com` for GitHub.com or `enterprise_server` for self-hosted GitHub Enterprise Server.
+- `tls_ca_bundle_pem` (String, Sensitive) Optional PEM-encoded CA bundle for GitHub Enterprise Server instances using a private CA.
+- `upload_base_url` (String) GitHub upload API base URL. Defaults server-side to the GitHub.com uploads API, or to `<web_base_url>/api/uploads` for Enterprise when omitted.
+- `web_base_url` (String) GitHub web base URL. Required when `provider_kind` is `enterprise_server`; defaults server-side for `github_com`.
 
 ### Read-Only
 

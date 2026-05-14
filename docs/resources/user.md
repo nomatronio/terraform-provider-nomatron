@@ -14,9 +14,9 @@ Nomatron user resource.
 
 ```terraform
 resource "nomatron_user" "example" {
-  username = "tf-test-user"
-  name     = "Terraform Test User"
-  password = "ChangeMe123!"
+  username    = "tf-test-user"
+  name        = "Terraform Test User"
+  password_wo = "ChangeMe123!"
 
   metadata = {
     team  = "platform"
@@ -33,7 +33,7 @@ resource "nomatron_user" "example" {
 > **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
 
 - `name` (String) Display name for the user.
-- `password` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Initial password for the user.
+- `password_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Initial password for the user.
 - `username` (String) Username for the user.
 
 ### Optional

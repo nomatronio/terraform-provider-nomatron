@@ -52,11 +52,16 @@ func TestOrganizationGitHubAppIntegrationResource_Schema(t *testing.T) {
 	assertResourceStringAttribute(t, attrs, "org_name", true, false, false, false)
 	assertResourceStringAttribute(t, attrs, "id", false, false, true, false)
 	assertResourceStringAttribute(t, attrs, "name", true, false, false, false)
+	assertResourceStringAttribute(t, attrs, "provider_kind", false, true, true, false)
+	assertResourceStringAttribute(t, attrs, "web_base_url", false, true, true, false)
+	assertResourceStringAttribute(t, attrs, "api_base_url", false, true, true, false)
+	assertResourceStringAttribute(t, attrs, "upload_base_url", false, true, true, false)
 	assertResourceStringAttribute(t, attrs, "app_id", true, false, false, false)
 	assertResourceStringAttribute(t, attrs, "app_slug", true, false, false, false)
 	assertResourceStringAttribute(t, attrs, "client_id", true, false, false, false)
 	assertResourceStringAttribute(t, attrs, "private_key_pem_wo", true, false, false, true)
 	assertResourceStringAttribute(t, attrs, "webhook_secret_wo", true, false, false, true)
+	assertResourceStringAttribute(t, attrs, "tls_ca_bundle_pem", false, true, false, true)
 	assertResourceStringAttribute(t, attrs, "scope", false, false, true, false)
 }
 
@@ -99,16 +104,24 @@ func TestStateFromOrganizationGitHubConnection(t *testing.T) {
 	appID := "12345"
 	appSlug := "nomatron-app"
 	clientID := "Iv1.1234567890abcdef"
+	webBaseURL := "https://github.enterprise.example"
+	apiBaseURL := "https://github.enterprise.example/api/v3"
+	uploadBaseURL := "https://github.enterprise.example/api/uploads"
+	providerKind := sdk.EnterpriseServer
 
 	state := stateFromOrganizationGitHubConnection(OrganizationGitHubAppIntegrationResourceModel{
 		OrgName: types.StringValue("platform"),
 	}, sdk.GitHubConnection{
-		Id:       connectionID,
-		Name:     "primary",
-		AppId:    &appID,
-		AppSlug:  &appSlug,
-		ClientId: &clientID,
-		Scope:    sdk.GitHubConnectionScopeOrg,
+		Id:            connectionID,
+		Name:          "primary",
+		AppId:         &appID,
+		AppSlug:       &appSlug,
+		ClientId:      &clientID,
+		ProviderKind:  &providerKind,
+		WebBaseUrl:    &webBaseURL,
+		ApiBaseUrl:    &apiBaseURL,
+		UploadBaseUrl: &uploadBaseURL,
+		Scope:         sdk.GitHubConnectionScopeOrg,
 	})
 
 	if state.OrgName.ValueString() != "platform" {
@@ -128,6 +141,18 @@ func TestStateFromOrganizationGitHubConnection(t *testing.T) {
 	}
 	if state.ClientID.ValueString() != clientID {
 		t.Fatalf("unexpected client_id: %q", state.ClientID.ValueString())
+	}
+	if state.ProviderKind.ValueString() != string(sdk.EnterpriseServer) {
+		t.Fatalf("unexpected provider_kind: %q", state.ProviderKind.ValueString())
+	}
+	if state.WebBaseURL.ValueString() != webBaseURL {
+		t.Fatalf("unexpected web_base_url: %q", state.WebBaseURL.ValueString())
+	}
+	if state.APIBaseURL.ValueString() != apiBaseURL {
+		t.Fatalf("unexpected api_base_url: %q", state.APIBaseURL.ValueString())
+	}
+	if state.UploadBaseURL.ValueString() != uploadBaseURL {
+		t.Fatalf("unexpected upload_base_url: %q", state.UploadBaseURL.ValueString())
 	}
 	if state.Scope.ValueString() != "org" {
 		t.Fatalf("unexpected scope: %q", state.Scope.ValueString())
