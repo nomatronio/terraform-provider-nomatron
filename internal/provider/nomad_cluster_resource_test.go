@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/nomatronio/nomatron/pkg/api/sdk"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
@@ -138,6 +139,57 @@ func TestStateFromNomadCluster(t *testing.T) {
 	}
 	if !state.SkipVerify.ValueBool() {
 		t.Fatal("expected skip_verify=true")
+	}
+}
+
+func TestStateFromNomadCluster_PreservesNullDescriptionWhenAPIUsesEmptyDefault(t *testing.T) {
+	t.Parallel()
+
+	clusterID := openapi_types.UUID(uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"))
+	description := ""
+
+	base := NomadClusterResourceModel{
+		Description: types.StringNull(),
+	}
+	cluster := sdk.Cluster{
+		Id:               clusterID,
+		Name:             "primary",
+		Description:      &description,
+		ConnectivityMode: sdk.ClusterConnectivityModeDirect,
+		Scope:            "global",
+	}
+
+	state := stateFromNomadCluster(base, cluster)
+
+	if !state.Description.IsNull() {
+		t.Fatalf("expected null description, got %q", state.Description.ValueString())
+	}
+}
+
+func TestStateFromNomadCluster_PreservesExplicitEmptyDescription(t *testing.T) {
+	t.Parallel()
+
+	clusterID := openapi_types.UUID(uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"))
+	description := ""
+
+	base := NomadClusterResourceModel{
+		Description: types.StringValue(""),
+	}
+	cluster := sdk.Cluster{
+		Id:               clusterID,
+		Name:             "primary",
+		Description:      &description,
+		ConnectivityMode: sdk.ClusterConnectivityModeDirect,
+		Scope:            "global",
+	}
+
+	state := stateFromNomadCluster(base, cluster)
+
+	if state.Description.IsNull() {
+		t.Fatal("expected explicit empty description, got null")
+	}
+	if state.Description.ValueString() != "" {
+		t.Fatalf("unexpected description: %q", state.Description.ValueString())
 	}
 }
 

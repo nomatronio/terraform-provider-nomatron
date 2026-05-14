@@ -148,6 +148,34 @@ func TestStateFromOrganizationNomadCluster(t *testing.T) {
 	}
 }
 
+func TestStateFromOrganizationNomadCluster_PreservesNullDescriptionWhenAPIUsesEmptyDefault(t *testing.T) {
+	t.Parallel()
+
+	clusterID := openapi_types.UUID(uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"))
+	description := ""
+
+	base := OrganizationNomadClusterResourceModel{
+		OrgName:     types.StringValue("platform"),
+		Description: types.StringNull(),
+	}
+	cluster := sdk.Cluster{
+		Id:               clusterID,
+		Name:             "primary",
+		Description:      &description,
+		ConnectivityMode: sdk.ClusterConnectivityModeDirect,
+		Scope:            "cccccccc-cccc-cccc-cccc-cccccccccccc",
+	}
+
+	state := stateFromOrganizationNomadCluster(base, cluster)
+
+	if state.OrgName.ValueString() != "platform" {
+		t.Fatalf("unexpected org_name: %q", state.OrgName.ValueString())
+	}
+	if !state.Description.IsNull() {
+		t.Fatalf("expected null description, got %q", state.Description.ValueString())
+	}
+}
+
 func TestOrganizationNomadClusterNotFoundError(t *testing.T) {
 	t.Parallel()
 

@@ -490,13 +490,7 @@ func buildUpdateClusterBody(plan, state, config NomadClusterResourceModel) (sdk.
 }
 
 func stateFromNomadCluster(base NomadClusterResourceModel, cluster sdk.Cluster) NomadClusterResourceModel {
-	description := base.Description
-	if description.IsUnknown() {
-		description = types.StringNull()
-	}
-	if cluster.Description != nil {
-		description = types.StringValue(*cluster.Description)
-	}
+	description := optionalStringStateFromAPI(base.Description, cluster.Description)
 
 	address := base.Address
 	if address.IsUnknown() {
@@ -537,4 +531,18 @@ func stateFromNomadCluster(base NomadClusterResourceModel, cluster sdk.Cluster) 
 		CreatedAt:        createdAt,
 		UpdatedAt:        updatedAt,
 	}
+}
+
+func optionalStringStateFromAPI(base types.String, value *string) types.String {
+	state := base
+	if state.IsUnknown() {
+		state = types.StringNull()
+	}
+	if value == nil {
+		return state
+	}
+	if state.IsNull() && *value == "" {
+		return types.StringNull()
+	}
+	return types.StringValue(*value)
 }
