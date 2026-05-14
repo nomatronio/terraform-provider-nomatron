@@ -29,6 +29,12 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.14.0
+          terraform_wrapper: false
+
       - name: Configure access to private Go modules
         env:
           NOMATRON_GH_TOKEN: ${{ secrets.NOMATRON_GH_TOKEN }}
