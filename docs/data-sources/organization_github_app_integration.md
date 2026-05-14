@@ -29,8 +29,12 @@ data "nomatron_organization_github_app_integration" "example" {
 
 ### Read-Only
 
+- `api_base_url` (String) GitHub API base URL.
 - `app_id` (String) GitHub App ID.
 - `app_slug` (String) GitHub App slug.
 - `client_id` (String) GitHub App client ID.
 - `id` (String) Integration ID.
+- `provider_kind` (String) GitHub provider kind.
 - `scope` (String) Integration scope, typically `org` for this data source.
+- `upload_base_url` (String) GitHub upload API base URL.
+- `web_base_url` (String) GitHub web base URL.

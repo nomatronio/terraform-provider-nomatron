@@ -14,16 +14,16 @@ Nomatron global GitHub App integration resource.
 
 ```terraform
 resource "nomatron_github_app_integration" "example" {
-  name            = "primary"
-  app_id          = "12345"
-  app_slug        = "nomatron-app"
-  client_id       = "Iv1.1234567890abcdef"
-  private_key_pem = <<-EOT
+  name               = "primary"
+  app_id             = "12345"
+  app_slug           = "nomatron-app"
+  client_id          = "Iv1.1234567890abcdef"
+  private_key_pem_wo = <<-EOT
   -----BEGIN RSA PRIVATE KEY-----
   ...
   -----END RSA PRIVATE KEY-----
   EOT
-  webhook_secret  = "super-secret"
+  webhook_secret_wo  = "super-secret"
 }
 ```
 
@@ -38,8 +38,16 @@ resource "nomatron_github_app_integration" "example" {
 - `app_slug` (String) GitHub App slug.
 - `client_id` (String) GitHub App client ID.
 - `name` (String) Integration name.
-- `private_key_pem` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) GitHub App private key PEM.
-- `webhook_secret` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) GitHub App webhook secret.
+- `private_key_pem_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) GitHub App private key PEM.
+- `webhook_secret_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) GitHub App webhook secret.
+
+### Optional
+
+- `api_base_url` (String) GitHub API base URL. Defaults to the GitHub.com API, or to `/api/v3` for Enterprise when omitted from the API request.
+- `provider_kind` (String) GitHub provider kind. Use `github_com` for GitHub.com or `enterprise_server` for self-hosted GitHub Enterprise Server.
+- `tls_ca_bundle_pem` (String, Sensitive) Optional PEM-encoded CA bundle for GitHub Enterprise Server instances using a private CA.
+- `upload_base_url` (String) GitHub upload API base URL. Defaults to the GitHub.com uploads API, or to `/api/uploads` for Enterprise when omitted from the API request.
+- `web_base_url` (String) GitHub web base URL. Required for GitHub Enterprise Server.
 
 ### Read-Only
 
