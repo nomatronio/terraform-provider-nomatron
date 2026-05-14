@@ -30,8 +30,11 @@ jobs:
           cache: true
 
       - name: Configure access to private Go modules
+        env:
+          NOMATRON_GH_TOKEN: ${{ secrets.NOMATRON_GH_TOKEN }}
         run: |
-          git config --global url."https://${{ secrets.NOMATRON_GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          test -n "${NOMATRON_GH_TOKEN}"
+          git config --global url."https://x-access-token:${NOMATRON_GH_TOKEN}@github.com/".insteadOf "https://github.com/"
           go env -w GOPRIVATE="${GOPRIVATE}"
 
       - name: Download dependencies
@@ -69,8 +72,11 @@ jobs:
           cache: true
 
       - name: Configure access to private Go modules
+        env:
+          NOMATRON_GH_TOKEN: ${{ secrets.NOMATRON_GH_TOKEN }}
         run: |
-          git config --global url."https://${{ secrets.NOMATRON_GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          test -n "${NOMATRON_GH_TOKEN}"
+          git config --global url."https://x-access-token:${NOMATRON_GH_TOKEN}@github.com/".insteadOf "https://github.com/"
           go env -w GOPRIVATE="${GOPRIVATE}"
 
       - name: Download dependencies
