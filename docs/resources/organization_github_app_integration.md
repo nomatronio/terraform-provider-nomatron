@@ -45,11 +45,11 @@ resource "nomatron_organization_github_app_integration" "example" {
 
 ### Optional
 
-- `api_base_url` (String) GitHub API base URL. Defaults to the GitHub.com API, or to `/api/v3` for Enterprise when omitted from the API request.
+- `api_base_url` (String) GitHub API base URL. Defaults server-side to the GitHub.com API, or to `<web_base_url>/api/v3` for Enterprise when omitted.
 - `provider_kind` (String) GitHub provider kind. Use `github_com` for GitHub.com or `enterprise_server` for self-hosted GitHub Enterprise Server.
 - `tls_ca_bundle_pem` (String, Sensitive) Optional PEM-encoded CA bundle for GitHub Enterprise Server instances using a private CA.
-- `upload_base_url` (String) GitHub upload API base URL. Defaults to the GitHub.com uploads API, or to `/api/uploads` for Enterprise when omitted from the API request.
-- `web_base_url` (String) GitHub web base URL. Required for GitHub Enterprise Server.
+- `upload_base_url` (String) GitHub upload API base URL. Defaults server-side to the GitHub.com uploads API, or to `<web_base_url>/api/uploads` for Enterprise when omitted.
+- `web_base_url` (String) GitHub web base URL. Required when `provider_kind` is `enterprise_server`; defaults server-side for `github_com`.
 
 ### Read-Only
 
