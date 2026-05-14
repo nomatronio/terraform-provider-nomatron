@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/terraform-plugin-log v0.10.0
 	github.com/hashicorp/terraform-plugin-testing v1.15.0
 	github.com/jarcoal/httpmock v1.4.1
-	github.com/nomatronio/nomatron v0.0.0-20260329095743-ee87cd418287
+	github.com/nomatronio/nomatron v0.0.0-20260510133403-8f987f87fef1
 )
 
 require (
@@ -88,5 +88,3 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/nomatronio/nomatron => ../nomatron
