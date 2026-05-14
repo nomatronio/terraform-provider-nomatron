@@ -21,13 +21,17 @@ func NewOrganizationGitHubAppIntegrationDataSource() datasource.DataSource {
 }
 
 type OrganizationGitHubAppIntegrationDataSourceModel struct {
-	OrgName  types.String `tfsdk:"org_name"`
-	Name     types.String `tfsdk:"name"`
-	ID       types.String `tfsdk:"id"`
-	AppID    types.String `tfsdk:"app_id"`
-	AppSlug  types.String `tfsdk:"app_slug"`
-	ClientID types.String `tfsdk:"client_id"`
-	Scope    types.String `tfsdk:"scope"`
+	OrgName       types.String `tfsdk:"org_name"`
+	Name          types.String `tfsdk:"name"`
+	ID            types.String `tfsdk:"id"`
+	ProviderKind  types.String `tfsdk:"provider_kind"`
+	WebBaseURL    types.String `tfsdk:"web_base_url"`
+	APIBaseURL    types.String `tfsdk:"api_base_url"`
+	UploadBaseURL types.String `tfsdk:"upload_base_url"`
+	AppID         types.String `tfsdk:"app_id"`
+	AppSlug       types.String `tfsdk:"app_slug"`
+	ClientID      types.String `tfsdk:"client_id"`
+	Scope         types.String `tfsdk:"scope"`
 }
 
 func (d *OrganizationGitHubAppIntegrationDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -49,6 +53,22 @@ func (d *OrganizationGitHubAppIntegrationDataSource) Schema(ctx context.Context,
 			"id": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "Integration ID.",
+			},
+			"provider_kind": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "GitHub provider kind.",
+			},
+			"web_base_url": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "GitHub web base URL.",
+			},
+			"api_base_url": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "GitHub API base URL.",
+			},
+			"upload_base_url": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "GitHub upload API base URL.",
 			},
 			"app_id": schema.StringAttribute{
 				Computed:            true,
@@ -128,14 +148,34 @@ func flattenOrganizationGitHubAppIntegrationDataSource(base OrganizationGitHubAp
 	if connection.ClientId != nil {
 		clientID = types.StringValue(*connection.ClientId)
 	}
+	providerKind := types.StringNull()
+	if connection.ProviderKind != nil {
+		providerKind = types.StringValue(string(*connection.ProviderKind))
+	}
+	webBaseURL := types.StringNull()
+	if connection.WebBaseUrl != nil {
+		webBaseURL = types.StringValue(*connection.WebBaseUrl)
+	}
+	apiBaseURL := types.StringNull()
+	if connection.ApiBaseUrl != nil {
+		apiBaseURL = types.StringValue(*connection.ApiBaseUrl)
+	}
+	uploadBaseURL := types.StringNull()
+	if connection.UploadBaseUrl != nil {
+		uploadBaseURL = types.StringValue(*connection.UploadBaseUrl)
+	}
 
 	return OrganizationGitHubAppIntegrationDataSourceModel{
-		OrgName:  base.OrgName,
-		Name:     base.Name,
-		ID:       types.StringValue(connection.Id.String()),
-		AppID:    appID,
-		AppSlug:  appSlug,
-		ClientID: clientID,
-		Scope:    types.StringValue(string(connection.Scope)),
+		OrgName:       base.OrgName,
+		Name:          base.Name,
+		ID:            types.StringValue(connection.Id.String()),
+		ProviderKind:  providerKind,
+		WebBaseURL:    webBaseURL,
+		APIBaseURL:    apiBaseURL,
+		UploadBaseURL: uploadBaseURL,
+		AppID:         appID,
+		AppSlug:       appSlug,
+		ClientID:      clientID,
+		Scope:         types.StringValue(string(connection.Scope)),
 	}
 }

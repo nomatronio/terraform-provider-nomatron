@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/nomatronio/nomatron/pkg/api/sdk"
@@ -30,11 +31,16 @@ type OrganizationGitHubAppIntegrationResourceModel struct {
 	OrgName         types.String `tfsdk:"org_name"`
 	ID              types.String `tfsdk:"id"`
 	Name            types.String `tfsdk:"name"`
+	ProviderKind    types.String `tfsdk:"provider_kind"`
+	WebBaseURL      types.String `tfsdk:"web_base_url"`
+	APIBaseURL      types.String `tfsdk:"api_base_url"`
+	UploadBaseURL   types.String `tfsdk:"upload_base_url"`
 	AppID           types.String `tfsdk:"app_id"`
 	AppSlug         types.String `tfsdk:"app_slug"`
 	ClientID        types.String `tfsdk:"client_id"`
 	PrivateKeyPemWO types.String `tfsdk:"private_key_pem_wo"`
 	WebhookSecretWO types.String `tfsdk:"webhook_secret_wo"`
+	TLSCABundlePEM  types.String `tfsdk:"tls_ca_bundle_pem"`
 	Scope           types.String `tfsdk:"scope"`
 }
 
@@ -64,6 +70,30 @@ func (r *OrganizationGitHubAppIntegrationResource) Schema(ctx context.Context, r
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
+			"provider_kind": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             stringdefault.StaticString("github_com"),
+				MarkdownDescription: "GitHub provider kind. Use `github_com` for GitHub.com or `enterprise_server` for self-hosted GitHub Enterprise Server.",
+			},
+			"web_base_url": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             stringdefault.StaticString("https://github.com"),
+				MarkdownDescription: "GitHub web base URL. Required for GitHub Enterprise Server.",
+			},
+			"api_base_url": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             stringdefault.StaticString("https://api.github.com"),
+				MarkdownDescription: "GitHub API base URL. Defaults to the GitHub.com API, or to `/api/v3` for Enterprise when omitted from the API request.",
+			},
+			"upload_base_url": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             stringdefault.StaticString("https://uploads.github.com"),
+				MarkdownDescription: "GitHub upload API base URL. Defaults to the GitHub.com uploads API, or to `/api/uploads` for Enterprise when omitted from the API request.",
+			},
 			"app_id": schema.StringAttribute{
 				Required:            true,
 				MarkdownDescription: "GitHub App ID.",
@@ -87,6 +117,11 @@ func (r *OrganizationGitHubAppIntegrationResource) Schema(ctx context.Context, r
 				Sensitive:           true,
 				WriteOnly:           true,
 				MarkdownDescription: "GitHub App webhook secret.",
+			},
+			"tls_ca_bundle_pem": schema.StringAttribute{
+				Optional:            true,
+				Sensitive:           true,
+				MarkdownDescription: "Optional PEM-encoded CA bundle for GitHub Enterprise Server instances using a private CA.",
 			},
 			"scope": schema.StringAttribute{
 				Computed:            true,
@@ -132,13 +167,18 @@ func (r *OrganizationGitHubAppIntegrationResource) Create(ctx context.Context, r
 	}
 
 	body := sdk.CreateOrganizationGitHubIntegrationJSONRequestBody{
-		AppId:         plan.AppID.ValueString(),
-		AppSlug:       plan.AppSlug.ValueString(),
-		ClientId:      plan.ClientID.ValueString(),
-		Name:          plan.Name.ValueString(),
-		Scope:         sdk.CreateGitHubConnectionRequestScopeOrg,
-		PrivateKeyPem: stringPointerFromConfig(config.PrivateKeyPemWO),
-		WebhookSecret: stringPointerFromConfig(config.WebhookSecretWO),
+		ApiBaseUrl:     stringPointerFromConfig(plan.APIBaseURL),
+		AppId:          plan.AppID.ValueString(),
+		AppSlug:        plan.AppSlug.ValueString(),
+		ClientId:       plan.ClientID.ValueString(),
+		Name:           plan.Name.ValueString(),
+		Scope:          sdk.CreateGitHubConnectionRequestScopeOrg,
+		PrivateKeyPem:  stringPointerFromConfig(config.PrivateKeyPemWO),
+		ProviderKind:   githubProviderKindPointerFromConfig(plan.ProviderKind),
+		TlsCaBundlePem: stringPointerFromConfig(plan.TLSCABundlePEM),
+		UploadBaseUrl:  stringPointerFromConfig(plan.UploadBaseURL),
+		WebBaseUrl:     stringPointerFromConfig(plan.WebBaseURL),
+		WebhookSecret:  stringPointerFromConfig(config.WebhookSecretWO),
 	}
 
 	rsp, err := r.client.CreateOrganizationGitHubIntegrationWithResponse(ctx, plan.OrgName.ValueString(), body)
@@ -234,6 +274,18 @@ func (r *OrganizationGitHubAppIntegrationResource) Update(ctx context.Context, r
 	}
 
 	body := sdk.UpdateOrganizationGitHubIntegrationJSONRequestBody{}
+	if stringValueChanged(plan.ProviderKind, state.ProviderKind) {
+		body.ProviderKind = githubProviderKindPointerFromConfig(plan.ProviderKind)
+	}
+	if stringValueChanged(plan.WebBaseURL, state.WebBaseURL) {
+		body.WebBaseUrl = stringPointerFromConfig(plan.WebBaseURL)
+	}
+	if stringValueChanged(plan.APIBaseURL, state.APIBaseURL) {
+		body.ApiBaseUrl = stringPointerFromConfig(plan.APIBaseURL)
+	}
+	if stringValueChanged(plan.UploadBaseURL, state.UploadBaseURL) {
+		body.UploadBaseUrl = stringPointerFromConfig(plan.UploadBaseURL)
+	}
 	if stringValueChanged(plan.AppID, state.AppID) {
 		appID := plan.AppID.ValueString()
 		body.AppId = &appID
@@ -253,6 +305,9 @@ func (r *OrganizationGitHubAppIntegrationResource) Update(ctx context.Context, r
 	if !config.WebhookSecretWO.IsNull() && !config.WebhookSecretWO.IsUnknown() {
 		webhookSecret := config.WebhookSecretWO.ValueString()
 		body.WebhookSecret = &webhookSecret
+	}
+	if stringValueChanged(plan.TLSCABundlePEM, state.TLSCABundlePEM) {
+		body.TlsCaBundlePem = stringPointerFromConfig(plan.TLSCABundlePEM)
 	}
 
 	rsp, err := r.client.UpdateOrganizationGitHubIntegrationWithResponse(ctx, state.OrgName.ValueString(), state.Name.ValueString(), body)
@@ -385,21 +440,31 @@ func readOrganizationGitHubIntegration(ctx context.Context, client *sdk.ClientWi
 
 func stateFromOrganizationGitHubConnection(base OrganizationGitHubAppIntegrationResourceModel, connection sdk.GitHubConnection) OrganizationGitHubAppIntegrationResourceModel {
 	state := stateFromGitHubConnection(GitHubAppIntegrationResourceModel{
-		ID:       base.ID,
-		Name:     base.Name,
-		AppID:    base.AppID,
-		AppSlug:  base.AppSlug,
-		ClientID: base.ClientID,
-		Scope:    base.Scope,
+		ID:             base.ID,
+		Name:           base.Name,
+		ProviderKind:   base.ProviderKind,
+		WebBaseURL:     base.WebBaseURL,
+		APIBaseURL:     base.APIBaseURL,
+		UploadBaseURL:  base.UploadBaseURL,
+		AppID:          base.AppID,
+		AppSlug:        base.AppSlug,
+		ClientID:       base.ClientID,
+		TLSCABundlePEM: base.TLSCABundlePEM,
+		Scope:          base.Scope,
 	}, connection)
 
 	return OrganizationGitHubAppIntegrationResourceModel{
-		OrgName:  base.OrgName,
-		ID:       state.ID,
-		Name:     state.Name,
-		AppID:    state.AppID,
-		AppSlug:  state.AppSlug,
-		ClientID: state.ClientID,
-		Scope:    state.Scope,
+		OrgName:        base.OrgName,
+		ID:             state.ID,
+		Name:           state.Name,
+		ProviderKind:   state.ProviderKind,
+		WebBaseURL:     state.WebBaseURL,
+		APIBaseURL:     state.APIBaseURL,
+		UploadBaseURL:  state.UploadBaseURL,
+		AppID:          state.AppID,
+		AppSlug:        state.AppSlug,
+		ClientID:       state.ClientID,
+		TLSCABundlePEM: state.TLSCABundlePEM,
+		Scope:          state.Scope,
 	}
 }
