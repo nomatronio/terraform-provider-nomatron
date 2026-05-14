@@ -2,7 +2,9 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
 	"testing"
 
 	"github.com/google/uuid"
@@ -173,6 +175,97 @@ func TestStateFromOrganizationNomadCluster_PreservesNullDescriptionWhenAPIUsesEm
 	}
 	if !state.Description.IsNull() {
 		t.Fatalf("expected null description, got %q", state.Description.ValueString())
+	}
+}
+
+func TestReadOrganizationClusterUsesListEndpoint(t *testing.T) {
+	t.Parallel()
+
+	clusterID := "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+	description := "dev cluster"
+
+	server := newTestHTTPServer(t, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			t.Fatalf("unexpected method: %s", req.Method)
+		}
+		if req.URL.Path != "/organizations/coinbase/clusters" {
+			t.Fatalf("unexpected path: %s", req.URL.Path)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		err := json.NewEncoder(w).Encode(map[string]interface{}{
+			"data": []map[string]interface{}{
+				{
+					"id":                clusterID,
+					"name":              "dev",
+					"description":       description,
+					"connectivity_mode": "direct",
+					"scope":             "cccccccc-cccc-cccc-cccc-cccccccccccc",
+					"skip_verify":       true,
+				},
+			},
+			"meta": map[string]interface{}{
+				"code":   "OK",
+				"status": "success",
+			},
+		})
+		if err != nil {
+			t.Fatalf("failed to write response: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	client, err := sdk.NewClientWithResponses(server.URL)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	cluster, err := readOrganizationCluster(context.Background(), client, "coinbase", "dev")
+	if err != nil {
+		t.Fatalf("expected cluster, got error: %v", err)
+	}
+
+	if cluster.Id.String() != clusterID {
+		t.Fatalf("unexpected cluster id: %s", cluster.Id.String())
+	}
+	if cluster.Name != "dev" {
+		t.Fatalf("unexpected cluster name: %s", cluster.Name)
+	}
+}
+
+func TestReadOrganizationClusterListEndpointNotFound(t *testing.T) {
+	t.Parallel()
+
+	server := newTestHTTPServer(t, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			t.Fatalf("unexpected method: %s", req.Method)
+		}
+		if req.URL.Path != "/organizations/coinbase/clusters" {
+			t.Fatalf("unexpected path: %s", req.URL.Path)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		err := json.NewEncoder(w).Encode(map[string]interface{}{
+			"data": []map[string]interface{}{},
+			"meta": map[string]interface{}{
+				"code":   "OK",
+				"status": "success",
+			},
+		})
+		if err != nil {
+			t.Fatalf("failed to write response: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	client, err := sdk.NewClientWithResponses(server.URL)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	_, err = readOrganizationCluster(context.Background(), client, "coinbase", "dev")
+	if !isOrganizationNomadClusterNotFound(err) {
+		t.Fatalf("expected not found error, got: %v", err)
 	}
 }
 

@@ -427,19 +427,37 @@ func isOrganizationNomadClusterNotFound(err error) bool {
 }
 
 func readOrganizationCluster(ctx context.Context, client *sdk.ClientWithResponses, orgName, name string) (sdk.Cluster, error) {
-	rsp, err := client.GetOrganizationClusterWithResponse(ctx, orgName, name)
+	rsp, err := client.ListOrganizationClustersWithResponse(ctx, orgName, nil)
 	if err != nil {
 		return sdk.Cluster{}, err
 	}
 
+	if rsp.JSON400 != nil {
+		return sdk.Cluster{}, fmt.Errorf("failed to list organization nomad clusters in org %q: %s", orgName, formatAPIError(rsp.JSON400))
+	}
+	if rsp.JSON401 != nil {
+		return sdk.Cluster{}, fmt.Errorf("unauthorized reading organization nomad clusters in org %q: %s", orgName, formatAPIError(rsp.JSON401))
+	}
+	if rsp.JSON403 != nil {
+		return sdk.Cluster{}, fmt.Errorf("forbidden reading organization nomad clusters in org %q: %s", orgName, formatAPIError(rsp.JSON403))
+	}
 	if rsp.JSON404 != nil {
 		return sdk.Cluster{}, &organizationNomadClusterNotFoundError{orgName: orgName, name: name}
 	}
+	if rsp.JSON500 != nil {
+		return sdk.Cluster{}, fmt.Errorf("failed to list organization nomad clusters in org %q: %s", orgName, formatAPIError(rsp.JSON500))
+	}
 	if rsp.JSON200 == nil {
-		return sdk.Cluster{}, fmt.Errorf("expected 200 response when reading organization nomad cluster %q in org %q, got %s", name, orgName, rsp.Status())
+		return sdk.Cluster{}, fmt.Errorf("expected 200 response when listing organization nomad clusters in org %q, got %s", orgName, rsp.Status())
 	}
 
-	return rsp.JSON200.Data, nil
+	for _, cluster := range rsp.JSON200.Data {
+		if cluster.Name == name {
+			return cluster, nil
+		}
+	}
+
+	return sdk.Cluster{}, &organizationNomadClusterNotFoundError{orgName: orgName, name: name}
 }
 
 func stateFromOrganizationNomadCluster(base OrganizationNomadClusterResourceModel, cluster sdk.Cluster) OrganizationNomadClusterResourceModel {
