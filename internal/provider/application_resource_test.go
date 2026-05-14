@@ -220,6 +220,34 @@ func TestStateFromApplication_WithNullOptionalFields(t *testing.T) {
 	}
 }
 
+func TestStateFromApplication_PreservesConfiguredValuesWhenAPIOmitsFields(t *testing.T) {
+	t.Parallel()
+
+	appID := openapi_types.UUID(uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"))
+	clusterID := "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+
+	state := stateFromApplication(ApplicationResourceModel{
+		OrgName:     types.StringValue("platform"),
+		ClusterID:   types.StringValue(clusterID),
+		RepoURL:     types.StringValue("https://github.com/nomatron/payments"),
+		GitProvider: types.StringValue("GitHub"),
+	}, sdk.App{
+		Id:   appID,
+		Slug: "payments",
+		Name: "Payments",
+	})
+
+	if state.ClusterID.ValueString() != clusterID {
+		t.Fatalf("expected cluster_id to be preserved, got %q", state.ClusterID.ValueString())
+	}
+	if state.RepoURL.ValueString() != "https://github.com/nomatron/payments" {
+		t.Fatalf("expected repo_url to be preserved, got %q", state.RepoURL.ValueString())
+	}
+	if state.GitProvider.ValueString() != "github" {
+		t.Fatalf("expected git_provider to be preserved, got %q", state.GitProvider.ValueString())
+	}
+}
+
 func TestLowerCaseStringPlanModifier(t *testing.T) {
 	t.Parallel()
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -535,15 +536,41 @@ func stateFromApplication(base ApplicationResourceModel, app sdk.App) Applicatio
 		updatedBy = types.StringValue(app.UpdatedBy.String())
 	}
 
+	clusterID := base.ClusterID
+	if clusterID.IsUnknown() {
+		clusterID = types.StringNull()
+	}
+	if app.ClusterId != uuid.Nil {
+		clusterID = types.StringValue(app.ClusterId.String())
+	}
+
+	repoURL := base.RepoURL
+	if repoURL.IsUnknown() {
+		repoURL = types.StringNull()
+	}
+	if app.RepoUrl != "" {
+		repoURL = types.StringValue(app.RepoUrl)
+	}
+
+	gitProvider := base.GitProvider
+	if gitProvider.IsUnknown() {
+		gitProvider = types.StringNull()
+	} else if !gitProvider.IsNull() {
+		gitProvider = types.StringValue(normalizeProviderString(gitProvider.ValueString()))
+	}
+	if app.GitProvider != "" {
+		gitProvider = types.StringValue(normalizeProviderString(string(app.GitProvider)))
+	}
+
 	return ApplicationResourceModel{
 		OrgName:     base.OrgName,
 		ID:          types.StringValue(app.Id.String()),
 		Slug:        types.StringValue(app.Slug),
 		Name:        types.StringValue(app.Name),
 		Description: description,
-		ClusterID:   types.StringValue(app.ClusterId.String()),
-		RepoURL:     types.StringValue(app.RepoUrl),
-		GitProvider: types.StringValue(string(app.GitProvider)),
+		ClusterID:   clusterID,
+		RepoURL:     repoURL,
+		GitProvider: gitProvider,
 		Ref:         ref,
 		AutoPlan:    types.BoolValue(app.AutoPlan),
 		AutoApply:   types.BoolValue(app.AutoApply),
