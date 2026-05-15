@@ -64,8 +64,8 @@ func TestNomatronProvider_Resources(t *testing.T) {
 
 	resources := p.Resources(context.Background())
 
-	if len(resources) != 19 {
-		t.Fatalf("expected 19 resources, got %d", len(resources))
+	if len(resources) != 20 {
+		t.Fatalf("expected 20 resources, got %d", len(resources))
 	}
 
 	agentResource := resources[0]()
@@ -238,6 +238,15 @@ func TestNomatronProvider_Resources(t *testing.T) {
 	if _, ok := userResource.(*UserResource); !ok {
 		t.Fatalf("expected nineteenth resource to be *UserResource, got %T", userResource)
 	}
+
+	jobApprovalPolicyResource := resources[19]()
+	if jobApprovalPolicyResource == nil {
+		t.Fatal("expected twentieth resource factory to return a non-nil resource")
+	}
+
+	if _, ok := jobApprovalPolicyResource.(*JobApprovalPolicyResource); !ok {
+		t.Fatalf("expected twentieth resource to be *JobApprovalPolicyResource, got %T", jobApprovalPolicyResource)
+	}
 }
 
 func TestNomatronProvider_DataSources(t *testing.T) {
@@ -247,8 +256,8 @@ func TestNomatronProvider_DataSources(t *testing.T) {
 
 	dataSources := p.DataSources(context.Background())
 
-	if len(dataSources) != 17 {
-		t.Fatalf("expected 17 data sources, got %d", len(dataSources))
+	if len(dataSources) != 18 {
+		t.Fatalf("expected 18 data sources, got %d", len(dataSources))
 	}
 
 	agentDS := dataSources[0]()
@@ -402,6 +411,15 @@ func TestNomatronProvider_DataSources(t *testing.T) {
 
 	if _, ok := usersDS.(*UsersDataSource); !ok {
 		t.Fatalf("expected seventeenth data source to be *UsersDataSource, got %T", usersDS)
+	}
+
+	jobApprovalPolicyDS := dataSources[17]()
+	if jobApprovalPolicyDS == nil {
+		t.Fatal("expected eighteenth data source factory to return a non-nil data source")
+	}
+
+	if _, ok := jobApprovalPolicyDS.(*JobApprovalPolicyDataSource); !ok {
+		t.Fatalf("expected eighteenth data source to be *JobApprovalPolicyDataSource, got %T", jobApprovalPolicyDS)
 	}
 }
 

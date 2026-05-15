@@ -6,4 +6,15 @@ resource "nomatron_variable" "example" {
   key       = "db_password"
   sensitive = true
   value_wo  = "super-secret-password"
+
+  environment_values = [
+    {
+      environment_slug = "dev"
+      value_wo         = "dev-secret-password"
+    },
+    {
+      environment_slug = "prod"
+      value_wo         = "prod-secret-password"
+    }
+  ]
 }

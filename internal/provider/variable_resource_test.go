@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/nomatronio/nomatron/pkg/api/sdk"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -61,6 +62,13 @@ func TestVariableResource_Schema(t *testing.T) {
 	assertResourceStringAttribute(t, attrs, "value", false, true, true, false)
 	assertResourceStringAttribute(t, attrs, "value_wo", false, true, false, true)
 	assertResourceStringAttribute(t, attrs, "value_id", false, false, true, false)
+	envValues, ok := attrs["environment_values"].(schema.ListNestedAttribute)
+	if !ok {
+		t.Fatalf("expected environment_values to be schema.ListNestedAttribute, got %T", attrs["environment_values"])
+	}
+	if !envValues.Optional || envValues.Computed {
+		t.Fatal("expected environment_values to be optional")
+	}
 	assertResourceStringAttribute(t, attrs, "created_at", false, false, true, false)
 	assertResourceStringAttribute(t, attrs, "updated_at", false, false, true, false)
 }
@@ -160,7 +168,7 @@ func TestStateFromVariable_NonSensitive(t *testing.T) {
 	}, &sdk.VariableValue{
 		Id:    valueID,
 		Value: &value,
-	})
+	}, nil)
 
 	if state.ID.ValueString() != variableID.String() {
 		t.Fatalf("unexpected id: %q", state.ID.ValueString())
@@ -204,7 +212,7 @@ func TestStateFromVariable_SensitiveMasksValue(t *testing.T) {
 		ValueType:   "string",
 	}, &sdk.VariableValue{
 		Id: valueID,
-	})
+	}, nil)
 
 	if !state.Value.IsNull() {
 		t.Fatal("expected sensitive value to be omitted from state")
@@ -241,5 +249,82 @@ func TestConfiguredVariableValue(t *testing.T) {
 	)
 	if !ok || value != "secret" {
 		t.Fatal("expected sensitive value to be selected from value_wo")
+	}
+}
+
+func TestConfiguredVariableEnvironmentValue(t *testing.T) {
+	t.Parallel()
+
+	value, ok := configuredVariableEnvironmentValue(
+		VariableEnvironmentValueModel{
+			Value: types.StringValue("plain"),
+		},
+		VariableEnvironmentValueModel{},
+		false,
+	)
+	if !ok || value != "plain" {
+		t.Fatal("expected non-sensitive environment value to be selected from value")
+	}
+
+	value, ok = configuredVariableEnvironmentValue(
+		VariableEnvironmentValueModel{},
+		VariableEnvironmentValueModel{
+			ValueWO: types.StringValue("secret"),
+		},
+		true,
+	)
+	if !ok || value != "secret" {
+		t.Fatal("expected sensitive environment value to be selected from value_wo")
+	}
+}
+
+func TestStateFromVariable_EnvironmentValues(t *testing.T) {
+	t.Parallel()
+
+	variableID := openapi_types.UUID(uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"))
+	envID := openapi_types.UUID(uuid.MustParse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"))
+	valueID := openapi_types.UUID(uuid.MustParse("cccccccc-cccc-cccc-cccc-cccccccccccc"))
+	envValue := "dev-value"
+
+	state := stateFromVariable(VariableResourceModel{
+		Scope:   types.StringValue("job"),
+		OrgName: types.StringValue("platform"),
+		AppSlug: types.StringValue("payments"),
+		JobSlug: types.StringValue("web"),
+		EnvironmentValues: []VariableEnvironmentValueModel{
+			{
+				EnvironmentSlug: types.StringValue("dev"),
+				Value:           types.StringValue("planned-value"),
+			},
+		},
+	}, sdk.Variable{
+		Id:          variableID,
+		Key:         "region",
+		Scope:       "app_job",
+		Sensitivity: "normal",
+		ValueType:   "string",
+	}, nil, []sdk.VariableValue{
+		{
+			Id:            valueID,
+			EnvironmentId: &envID,
+			Value:         &envValue,
+		},
+	})
+
+	if len(state.EnvironmentValues) != 1 {
+		t.Fatalf("unexpected environment value count: %d", len(state.EnvironmentValues))
+	}
+	got := state.EnvironmentValues[0]
+	if got.EnvironmentSlug.ValueString() != "dev" {
+		t.Fatalf("unexpected environment_slug: %q", got.EnvironmentSlug.ValueString())
+	}
+	if got.EnvironmentID.ValueString() != envID.String() {
+		t.Fatalf("unexpected environment_id: %q", got.EnvironmentID.ValueString())
+	}
+	if got.ValueID.ValueString() != valueID.String() {
+		t.Fatalf("unexpected value_id: %q", got.ValueID.ValueString())
+	}
+	if got.Value.ValueString() != envValue {
+		t.Fatalf("unexpected value: %q", got.Value.ValueString())
 	}
 }

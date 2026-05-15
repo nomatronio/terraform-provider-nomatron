@@ -21,6 +21,17 @@ resource "nomatron_variable" "example" {
   key       = "db_password"
   sensitive = true
   value_wo  = "super-secret-password"
+
+  environment_values = [
+    {
+      environment_slug = "dev"
+      value_wo         = "dev-secret-password"
+    },
+    {
+      environment_slug = "prod"
+      value_wo         = "prod-secret-password"
+    }
+  ]
 }
 ```
 
@@ -38,6 +49,7 @@ resource "nomatron_variable" "example" {
 
 - `app_slug` (String) Application slug for app or job scoped variables.
 - `description` (String) Optional variable description.
+- `environment_values` (Attributes List) Environment-specific values for job-scoped variables. (see [below for nested schema](#nestedatt--environment_values))
 - `job_slug` (String) Job slug for job scoped variables.
 - `org_name` (String) Organization name for organization, app, or job scoped variables.
 - `sensitive` (Boolean) Whether the variable value is sensitive.
@@ -51,3 +63,20 @@ resource "nomatron_variable" "example" {
 - `id` (String) Variable ID.
 - `updated_at` (String) Timestamp when the variable was last updated.
 - `value_id` (String) Default value row ID, when present.
+
+<a id="nestedatt--environment_values"></a>
+### Nested Schema for `environment_values`
+
+Required:
+
+- `environment_slug` (String) Environment slug this value applies to.
+
+Optional:
+
+- `value` (String) Environment-specific value for non-sensitive variables.
+- `value_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Write-only environment-specific value for sensitive variables.
+
+Read-Only:
+
+- `environment_id` (String) Environment ID returned by the API for this value.
+- `value_id` (String) Environment-specific value row ID.

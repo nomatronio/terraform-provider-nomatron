@@ -132,6 +132,7 @@ func (p *NomatronProvider) Resources(ctx context.Context) []func() resource.Reso
 		NewServiceAccountResource,
 		NewVariableResource,
 		NewUserResource,
+		NewJobApprovalPolicyResource,
 	}
 }
 
@@ -154,6 +155,7 @@ func (p *NomatronProvider) DataSources(ctx context.Context) []func() datasource.
 		NewRoleDataSource,
 		NewServiceAccountDataSource,
 		NewUsersDataSource,
+		NewJobApprovalPolicyDataSource,
 	}
 }
 

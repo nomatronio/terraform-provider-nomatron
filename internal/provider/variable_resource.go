@@ -48,20 +48,29 @@ func NewVariableResource() resource.Resource {
 }
 
 type VariableResourceModel struct {
-	ID          types.String `tfsdk:"id"`
-	Scope       types.String `tfsdk:"scope"`
-	OrgName     types.String `tfsdk:"org_name"`
-	AppSlug     types.String `tfsdk:"app_slug"`
-	JobSlug     types.String `tfsdk:"job_slug"`
-	Key         types.String `tfsdk:"key"`
-	Description types.String `tfsdk:"description"`
-	Sensitive   types.Bool   `tfsdk:"sensitive"`
-	ValueType   types.String `tfsdk:"value_type"`
-	Value       types.String `tfsdk:"value"`
-	ValueWO     types.String `tfsdk:"value_wo"`
-	ValueID     types.String `tfsdk:"value_id"`
-	CreatedAt   types.String `tfsdk:"created_at"`
-	UpdatedAt   types.String `tfsdk:"updated_at"`
+	ID                types.String                    `tfsdk:"id"`
+	Scope             types.String                    `tfsdk:"scope"`
+	OrgName           types.String                    `tfsdk:"org_name"`
+	AppSlug           types.String                    `tfsdk:"app_slug"`
+	JobSlug           types.String                    `tfsdk:"job_slug"`
+	Key               types.String                    `tfsdk:"key"`
+	Description       types.String                    `tfsdk:"description"`
+	Sensitive         types.Bool                      `tfsdk:"sensitive"`
+	ValueType         types.String                    `tfsdk:"value_type"`
+	Value             types.String                    `tfsdk:"value"`
+	ValueWO           types.String                    `tfsdk:"value_wo"`
+	ValueID           types.String                    `tfsdk:"value_id"`
+	EnvironmentValues []VariableEnvironmentValueModel `tfsdk:"environment_values"`
+	CreatedAt         types.String                    `tfsdk:"created_at"`
+	UpdatedAt         types.String                    `tfsdk:"updated_at"`
+}
+
+type VariableEnvironmentValueModel struct {
+	EnvironmentSlug types.String `tfsdk:"environment_slug"`
+	EnvironmentID   types.String `tfsdk:"environment_id"`
+	Value           types.String `tfsdk:"value"`
+	ValueWO         types.String `tfsdk:"value_wo"`
+	ValueID         types.String `tfsdk:"value_id"`
 }
 
 func (r *VariableResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -158,6 +167,43 @@ func (r *VariableResource) Schema(ctx context.Context, req resource.SchemaReques
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"environment_values": schema.ListNestedAttribute{
+				Optional:            true,
+				MarkdownDescription: "Environment-specific values for job-scoped variables.",
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"environment_slug": schema.StringAttribute{
+							Required:            true,
+							MarkdownDescription: "Environment slug this value applies to.",
+						},
+						"environment_id": schema.StringAttribute{
+							Computed:            true,
+							MarkdownDescription: "Environment ID returned by the API for this value.",
+						},
+						"value": schema.StringAttribute{
+							Optional:            true,
+							Computed:            true,
+							MarkdownDescription: "Environment-specific value for non-sensitive variables.",
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.UseStateForUnknown(),
+							},
+						},
+						"value_wo": schema.StringAttribute{
+							Optional:            true,
+							WriteOnly:           true,
+							Sensitive:           true,
+							MarkdownDescription: "Write-only environment-specific value for sensitive variables.",
+						},
+						"value_id": schema.StringAttribute{
+							Computed:            true,
+							MarkdownDescription: "Environment-specific value row ID.",
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.UseStateForUnknown(),
+							},
+						},
+					},
+				},
+			},
 			"created_at": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "Timestamp when the variable was created.",
@@ -234,6 +280,10 @@ func (r *VariableResource) ValidateConfig(ctx context.Context, req resource.Vali
 		resp.Diagnostics.AddAttributeError(path.Root("scope"), "Invalid Scope", "`scope` must be one of `global`, `organization`, `app`, or `job`.")
 	}
 
+	if len(data.EnvironmentValues) > 0 && scope != variableScopeJob {
+		resp.Diagnostics.AddAttributeError(path.Root("environment_values"), "Invalid Scope Configuration", "`environment_values` can only be set for job scoped variables.")
+	}
+
 	if attributeIsSet(data.Value) && attributeIsSet(data.ValueWO) {
 		resp.Diagnostics.AddAttributeError(path.Root("value"), "Invalid Value Configuration", "Only one of `value` or `value_wo` can be set.")
 		resp.Diagnostics.AddAttributeError(path.Root("value_wo"), "Invalid Value Configuration", "Only one of `value` or `value_wo` can be set.")
@@ -261,6 +311,32 @@ func (r *VariableResource) ValidateConfig(ctx context.Context, req resource.Vali
 		}
 	} else if attributeIsSet(data.ValueWO) {
 		resp.Diagnostics.AddAttributeError(path.Root("value_wo"), "Invalid Non-Sensitive Value Configuration", "Non-sensitive variables must use `value` so the default value is tracked in Terraform state.")
+	}
+
+	for i, envValue := range data.EnvironmentValues {
+		envPath := path.Root("environment_values").AtListIndex(i)
+		if attributeIsSet(envValue.Value) && attributeIsSet(envValue.ValueWO) {
+			resp.Diagnostics.AddAttributeError(envPath.AtName("value"), "Invalid Environment Value Configuration", "Only one of `value` or `value_wo` can be set.")
+			resp.Diagnostics.AddAttributeError(envPath.AtName("value_wo"), "Invalid Environment Value Configuration", "Only one of `value` or `value_wo` can be set.")
+		}
+		if sensitive {
+			if attributeIsSet(envValue.Value) {
+				resp.Diagnostics.AddAttributeError(envPath.AtName("value"), "Invalid Sensitive Environment Value Configuration", "Sensitive variables must use `value_wo` for environment-specific values.")
+			}
+			if !attributeIsSet(envValue.ValueWO) && !envValue.ValueWO.IsUnknown() {
+				resp.Diagnostics.AddAttributeError(envPath.AtName("value_wo"), "Missing Environment Value", "Sensitive environment-specific values must set `value_wo`.")
+			}
+			if attributeIsSet(envValue.ValueWO) && !req.ClientCapabilities.WriteOnlyAttributesAllowed {
+				resp.Diagnostics.AddAttributeError(envPath.AtName("value_wo"), "Unsupported Terraform Version", "This Terraform client does not support write-only resource attributes. Upgrade Terraform to use `value_wo`.")
+			}
+		} else {
+			if attributeIsSet(envValue.ValueWO) {
+				resp.Diagnostics.AddAttributeError(envPath.AtName("value_wo"), "Invalid Non-Sensitive Environment Value Configuration", "Non-sensitive variables must use `value` for environment-specific values.")
+			}
+			if !attributeIsSet(envValue.Value) && !envValue.Value.IsUnknown() {
+				resp.Diagnostics.AddAttributeError(envPath.AtName("value"), "Missing Environment Value", "Non-sensitive environment-specific values must set `value`.")
+			}
+		}
 	}
 }
 
@@ -327,7 +403,13 @@ func (r *VariableResource) Create(ctx context.Context, req resource.CreateReques
 		}
 	}
 
-	state := stateFromVariable(plan, variableRecord, defaultRow)
+	envValues, err := upsertConfiguredVariableEnvironmentValues(ctx, r.client, plan, config, variableRecord.Id)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed To Set Variable Environment Values", err.Error())
+		return
+	}
+
+	state := stateFromVariable(plan, variableRecord, defaultRow, envValues)
 	if hasDefault && !plan.Sensitive.ValueBool() {
 		state.Value = types.StringValue(defaultValue)
 	}
@@ -370,7 +452,13 @@ func (r *VariableResource) Read(ctx context.Context, req resource.ReadRequest, r
 		return
 	}
 
-	newState := stateFromVariable(state, variableRecord, defaultRow)
+	envRows, err := listConfiguredVariableEnvironmentValues(ctx, r.client, state, variableID)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed To Read Variable Environment Values", err.Error())
+		return
+	}
+
+	newState := stateFromVariable(state, variableRecord, defaultRow, envRows)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &newState)...)
 }
 
@@ -434,13 +522,24 @@ func (r *VariableResource) Update(ctx context.Context, req resource.UpdateReques
 		}
 	}
 
+	if err := deleteRemovedVariableEnvironmentValues(ctx, r.client, plan, state, variableID); err != nil {
+		resp.Diagnostics.AddError("Failed To Delete Variable Environment Values", err.Error())
+		return
+	}
+
+	envRows, err := upsertConfiguredVariableEnvironmentValues(ctx, r.client, plan, config, variableID)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed To Update Variable Environment Values", err.Error())
+		return
+	}
+
 	defaultRow, err := getVariableDefaultValueByScope(ctx, r.client, plan, variableID)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed To Read Variable Default Value", err.Error())
 		return
 	}
 
-	newState := stateFromVariable(plan, variableRecord, defaultRow)
+	newState := stateFromVariable(plan, variableRecord, defaultRow, envRows)
 	if hasDefault && !plan.Sensitive.ValueBool() {
 		newState.Value = types.StringValue(defaultValue)
 	}
@@ -550,6 +649,28 @@ func configuredVariableValue(plan, config VariableResourceModel) (string, bool) 
 	}
 
 	return "", false
+}
+
+func configuredVariableEnvironmentValue(planEnv, configEnv VariableEnvironmentValueModel, sensitive bool) (string, bool) {
+	if sensitive {
+		if attributeIsSet(configEnv.ValueWO) {
+			return configEnv.ValueWO.ValueString(), true
+		}
+		return "", false
+	}
+	if attributeIsSet(planEnv.Value) {
+		return planEnv.Value.ValueString(), true
+	}
+	return "", false
+}
+
+func matchingConfiguredEnvironmentValue(config VariableResourceModel, planEnv VariableEnvironmentValueModel) VariableEnvironmentValueModel {
+	for _, configEnv := range config.EnvironmentValues {
+		if configEnv.EnvironmentSlug.ValueString() == planEnv.EnvironmentSlug.ValueString() {
+			return configEnv
+		}
+	}
+	return VariableEnvironmentValueModel{}
 }
 
 func parseVariableImportID(raw string) (scope, orgName, appSlug, jobSlug, variableID string, err error) {
@@ -891,7 +1012,140 @@ func upsertVariableDefaultValueByScope(ctx context.Context, client *sdk.ClientWi
 	}
 }
 
-func stateFromVariable(base VariableResourceModel, variableRecord sdk.Variable, defaultRow *sdk.VariableValue) VariableResourceModel {
+func upsertConfiguredVariableEnvironmentValues(ctx context.Context, client *sdk.ClientWithResponses, plan, config VariableResourceModel, variableID openapi_types.UUID) ([]sdk.VariableValue, error) {
+	if normalizeVariableScope(plan.Scope.ValueString()) != variableScopeJob || len(plan.EnvironmentValues) == 0 {
+		return nil, nil
+	}
+
+	rows := make([]sdk.VariableValue, 0, len(plan.EnvironmentValues))
+	for _, planEnv := range plan.EnvironmentValues {
+		configEnv := matchingConfiguredEnvironmentValue(config, planEnv)
+		value, ok := configuredVariableEnvironmentValue(planEnv, configEnv, plan.Sensitive.ValueBool())
+		if !ok {
+			continue
+		}
+
+		row, err := upsertVariableEnvironmentValue(ctx, client, plan, variableID, planEnv.EnvironmentSlug.ValueString(), value)
+		if err != nil {
+			return nil, err
+		}
+		rows = append(rows, row)
+	}
+	return rows, nil
+}
+
+func upsertVariableEnvironmentValue(ctx context.Context, client *sdk.ClientWithResponses, data VariableResourceModel, variableID openapi_types.UUID, envSlug, value string) (sdk.VariableValue, error) {
+	body := sdk.UpsertVariableValueRequest{
+		Value: &value,
+	}
+	rsp, err := client.UpsertAppJobVariableEnvValueWithResponse(ctx, data.OrgName.ValueString(), data.AppSlug.ValueString(), data.JobSlug.ValueString(), variableID, envSlug, body)
+	if err != nil {
+		return sdk.VariableValue{}, err
+	}
+	if rsp.JSON400 != nil {
+		return sdk.VariableValue{}, fmt.Errorf("failed to upsert job variable environment value %q for variable %q: %s", envSlug, variableID.String(), formatAPIError(rsp.JSON400))
+	}
+	if rsp.JSON404 != nil {
+		return sdk.VariableValue{}, &variableNotFoundError{scope: data.Scope.ValueString(), id: variableID.String()}
+	}
+	if rsp.JSON200 == nil {
+		return sdk.VariableValue{}, fmt.Errorf("expected 200 response when upserting job variable environment value %q for variable %q, got %s", envSlug, variableID.String(), rsp.Status())
+	}
+	return rsp.JSON200.Data, nil
+}
+
+func listConfiguredVariableEnvironmentValues(ctx context.Context, client *sdk.ClientWithResponses, data VariableResourceModel, variableID openapi_types.UUID) ([]sdk.VariableValue, error) {
+	if normalizeVariableScope(data.Scope.ValueString()) != variableScopeJob || len(data.EnvironmentValues) == 0 {
+		return nil, nil
+	}
+
+	rsp, err := client.ListAppJobVariableValuesWithResponse(ctx, data.OrgName.ValueString(), data.AppSlug.ValueString(), data.JobSlug.ValueString(), variableID, nil)
+	if err != nil {
+		return nil, err
+	}
+	if rsp.JSON404 != nil {
+		return nil, &variableNotFoundError{scope: data.Scope.ValueString(), id: variableID.String()}
+	}
+	if rsp.JSON200 == nil {
+		return nil, fmt.Errorf("expected 200 response when listing job variable values %q, got %s", variableID.String(), rsp.Status())
+	}
+
+	wanted := configuredEnvironmentValueKeys(data.EnvironmentValues)
+	rows := make([]sdk.VariableValue, 0, len(data.EnvironmentValues))
+	for _, row := range rsp.JSON200.Data {
+		if row.IsDefault || row.EnvironmentId == nil {
+			continue
+		}
+		if _, ok := wanted[variableEnvironmentValueKeyFromRow(row)]; ok {
+			rows = append(rows, row)
+		}
+	}
+	return rows, nil
+}
+
+func deleteRemovedVariableEnvironmentValues(ctx context.Context, client *sdk.ClientWithResponses, plan, state VariableResourceModel, variableID openapi_types.UUID) error {
+	if normalizeVariableScope(state.Scope.ValueString()) != variableScopeJob {
+		return nil
+	}
+
+	planned := map[string]struct{}{}
+	for _, envValue := range plan.EnvironmentValues {
+		planned[envValue.EnvironmentSlug.ValueString()] = struct{}{}
+	}
+
+	for _, envValue := range state.EnvironmentValues {
+		if _, ok := planned[envValue.EnvironmentSlug.ValueString()]; ok {
+			continue
+		}
+		if !attributeIsSet(envValue.ValueID) {
+			continue
+		}
+		valueID, err := parseVariableUUID(envValue.ValueID.ValueString())
+		if err != nil {
+			return err
+		}
+		if err := deleteJobVariableValue(ctx, client, state, variableID, valueID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func deleteJobVariableValue(ctx context.Context, client *sdk.ClientWithResponses, data VariableResourceModel, variableID, valueID openapi_types.UUID) error {
+	rsp, err := client.DeleteAppJobVariableValueWithResponse(ctx, data.OrgName.ValueString(), data.AppSlug.ValueString(), data.JobSlug.ValueString(), variableID, valueID)
+	if err != nil {
+		return err
+	}
+	if rsp.JSON404 != nil {
+		return nil
+	}
+	if rsp.StatusCode() != http.StatusNoContent && rsp.StatusCode() != http.StatusOK {
+		return fmt.Errorf("expected 200/204 response when deleting job variable value %q for variable %q, got %s", valueID.String(), variableID.String(), rsp.Status())
+	}
+	return nil
+}
+
+func configuredEnvironmentValueKeys(values []VariableEnvironmentValueModel) map[string]VariableEnvironmentValueModel {
+	keys := make(map[string]VariableEnvironmentValueModel, len(values)*2)
+	for _, envValue := range values {
+		if attributeIsSet(envValue.EnvironmentID) {
+			keys["env:"+envValue.EnvironmentID.ValueString()] = envValue
+		}
+		if attributeIsSet(envValue.ValueID) {
+			keys["value:"+envValue.ValueID.ValueString()] = envValue
+		}
+	}
+	return keys
+}
+
+func variableEnvironmentValueKeyFromRow(row sdk.VariableValue) string {
+	if row.EnvironmentId != nil {
+		return "env:" + row.EnvironmentId.String()
+	}
+	return "value:" + row.Id.String()
+}
+
+func stateFromVariable(base VariableResourceModel, variableRecord sdk.Variable, defaultRow *sdk.VariableValue, envRows []sdk.VariableValue) VariableResourceModel {
 	description := types.StringNull()
 	if variableRecord.Description != nil {
 		description = types.StringValue(*variableRecord.Description)
@@ -923,6 +1177,8 @@ func stateFromVariable(base VariableResourceModel, variableRecord sdk.Variable, 
 		valueID = base.ValueID
 	}
 
+	envValues := stateFromVariableEnvironmentValues(base, variableRecord, envRows)
+
 	createdAt := types.StringNull()
 	if !variableRecord.CreatedAt.IsZero() {
 		createdAt = types.StringValue(variableRecord.CreatedAt.Format(time.RFC3339))
@@ -934,19 +1190,80 @@ func stateFromVariable(base VariableResourceModel, variableRecord sdk.Variable, 
 	}
 
 	return VariableResourceModel{
-		ID:          types.StringValue(variableRecord.Id.String()),
-		Scope:       types.StringValue(normalizeVariableScope(variableRecord.Scope)),
-		OrgName:     base.OrgName,
-		AppSlug:     base.AppSlug,
-		JobSlug:     base.JobSlug,
-		Key:         types.StringValue(variableRecord.Key),
-		Description: description,
-		Sensitive:   variableBoolFromSensitivity(variableRecord.Sensitivity),
-		ValueType:   valueType,
-		Value:       value,
-		ValueWO:     types.StringNull(),
-		ValueID:     valueID,
-		CreatedAt:   createdAt,
-		UpdatedAt:   updatedAt,
+		ID:                types.StringValue(variableRecord.Id.String()),
+		Scope:             types.StringValue(normalizeVariableScope(variableRecord.Scope)),
+		OrgName:           base.OrgName,
+		AppSlug:           base.AppSlug,
+		JobSlug:           base.JobSlug,
+		Key:               types.StringValue(variableRecord.Key),
+		Description:       description,
+		Sensitive:         variableBoolFromSensitivity(variableRecord.Sensitivity),
+		ValueType:         valueType,
+		Value:             value,
+		ValueWO:           types.StringNull(),
+		ValueID:           valueID,
+		EnvironmentValues: envValues,
+		CreatedAt:         createdAt,
+		UpdatedAt:         updatedAt,
 	}
+}
+
+func stateFromVariableEnvironmentValues(base VariableResourceModel, variableRecord sdk.Variable, envRows []sdk.VariableValue) []VariableEnvironmentValueModel {
+	if len(base.EnvironmentValues) == 0 {
+		return nil
+	}
+
+	byKey := make(map[string]sdk.VariableValue, len(envRows)*2)
+	for _, row := range envRows {
+		if row.EnvironmentId != nil {
+			byKey["env:"+row.EnvironmentId.String()] = row
+		}
+		byKey["value:"+row.Id.String()] = row
+	}
+
+	out := make([]VariableEnvironmentValueModel, 0, len(base.EnvironmentValues))
+	for i, baseEnv := range base.EnvironmentValues {
+		var row sdk.VariableValue
+		var ok bool
+		if attributeIsSet(baseEnv.EnvironmentID) {
+			row, ok = byKey["env:"+baseEnv.EnvironmentID.ValueString()]
+		}
+		if !ok && attributeIsSet(baseEnv.ValueID) {
+			row, ok = byKey["value:"+baseEnv.ValueID.ValueString()]
+		}
+		if !ok && i < len(envRows) {
+			row = envRows[i]
+			ok = true
+		}
+		if !ok {
+			out = append(out, baseEnv)
+			continue
+		}
+
+		value := types.StringNull()
+		if !strings.EqualFold(variableRecord.Sensitivity, variableSensitivitySensitive) {
+			switch {
+			case row.Value != nil:
+				value = types.StringValue(*row.Value)
+			case !baseEnv.Value.IsUnknown():
+				value = baseEnv.Value
+			}
+		}
+
+		environmentID := types.StringNull()
+		if row.EnvironmentId != nil {
+			environmentID = types.StringValue(row.EnvironmentId.String())
+		} else if !baseEnv.EnvironmentID.IsUnknown() {
+			environmentID = baseEnv.EnvironmentID
+		}
+
+		out = append(out, VariableEnvironmentValueModel{
+			EnvironmentSlug: baseEnv.EnvironmentSlug,
+			EnvironmentID:   environmentID,
+			Value:           value,
+			ValueWO:         types.StringNull(),
+			ValueID:         types.StringValue(row.Id.String()),
+		})
+	}
+	return out
 }
