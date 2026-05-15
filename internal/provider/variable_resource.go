@@ -1063,28 +1063,34 @@ func listConfiguredVariableEnvironmentValues(ctx context.Context, client *sdk.Cl
 		return nil, nil
 	}
 
-	rsp, err := client.ListAppJobVariableValuesWithResponse(ctx, data.OrgName.ValueString(), data.AppSlug.ValueString(), data.JobSlug.ValueString(), variableID, nil)
-	if err != nil {
-		return nil, err
-	}
-	if rsp.JSON404 != nil {
-		return nil, &variableNotFoundError{scope: data.Scope.ValueString(), id: variableID.String()}
-	}
-	if rsp.JSON200 == nil {
-		return nil, fmt.Errorf("expected 200 response when listing job variable values %q, got %s", variableID.String(), rsp.Status())
-	}
-
-	wanted := configuredEnvironmentValueKeys(data.EnvironmentValues)
 	rows := make([]sdk.VariableValue, 0, len(data.EnvironmentValues))
-	for _, row := range rsp.JSON200.Data {
-		if row.IsDefault || row.EnvironmentId == nil {
+	for _, envValue := range data.EnvironmentValues {
+		if !attributeIsSet(envValue.EnvironmentSlug) {
 			continue
 		}
-		if _, ok := wanted[variableEnvironmentValueKeyFromRow(row)]; ok {
+		row, ok, err := getVariableEnvironmentValue(ctx, client, data, variableID, envValue.EnvironmentSlug.ValueString())
+		if err != nil {
+			return nil, err
+		}
+		if ok {
 			rows = append(rows, row)
 		}
 	}
 	return rows, nil
+}
+
+func getVariableEnvironmentValue(ctx context.Context, client *sdk.ClientWithResponses, data VariableResourceModel, variableID openapi_types.UUID, envSlug string) (sdk.VariableValue, bool, error) {
+	rsp, err := client.GetAppJobVariableEnvValueWithResponse(ctx, data.OrgName.ValueString(), data.AppSlug.ValueString(), data.JobSlug.ValueString(), variableID, envSlug)
+	if err != nil {
+		return sdk.VariableValue{}, false, err
+	}
+	if rsp.JSON404 != nil {
+		return sdk.VariableValue{}, false, nil
+	}
+	if rsp.JSON200 == nil {
+		return sdk.VariableValue{}, false, fmt.Errorf("expected 200 response when reading job variable environment value %q for variable %q, got %s", envSlug, variableID.String(), rsp.Status())
+	}
+	return rsp.JSON200.Data, true, nil
 }
 
 func deleteRemovedVariableEnvironmentValues(ctx context.Context, client *sdk.ClientWithResponses, plan, state VariableResourceModel, variableID openapi_types.UUID) error {
@@ -1127,26 +1133,6 @@ func deleteJobVariableValue(ctx context.Context, client *sdk.ClientWithResponses
 		return fmt.Errorf("expected 200/204 response when deleting job variable value %q for variable %q, got %s", valueID.String(), variableID.String(), rsp.Status())
 	}
 	return nil
-}
-
-func configuredEnvironmentValueKeys(values []VariableEnvironmentValueModel) map[string]VariableEnvironmentValueModel {
-	keys := make(map[string]VariableEnvironmentValueModel, len(values)*2)
-	for _, envValue := range values {
-		if attributeIsSet(envValue.EnvironmentID) {
-			keys["env:"+envValue.EnvironmentID.ValueString()] = envValue
-		}
-		if attributeIsSet(envValue.ValueID) {
-			keys["value:"+envValue.ValueID.ValueString()] = envValue
-		}
-	}
-	return keys
-}
-
-func variableEnvironmentValueKeyFromRow(row sdk.VariableValue) string {
-	if row.EnvironmentId != nil {
-		return "env:" + row.EnvironmentId.String()
-	}
-	return "value:" + row.Id.String()
 }
 
 func stateFromVariable(base VariableResourceModel, variableRecord sdk.Variable, defaultRow *sdk.VariableValue, envRows []sdk.VariableValue) VariableResourceModel {
