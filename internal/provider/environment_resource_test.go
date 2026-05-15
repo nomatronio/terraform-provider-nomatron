@@ -250,6 +250,31 @@ func TestBuildUpdateEnvironmentBody(t *testing.T) {
 	}
 }
 
+func TestPriorityUpdateRequired(t *testing.T) {
+	t.Parallel()
+
+	if !priorityUpdateRequired(
+		EnvironmentResourceModel{Priority: types.Int64Value(10)},
+		sdk.Environment{Priority: 1},
+	) {
+		t.Fatal("expected differing priority to require update")
+	}
+
+	if priorityUpdateRequired(
+		EnvironmentResourceModel{Priority: types.Int64Value(10)},
+		sdk.Environment{Priority: 10},
+	) {
+		t.Fatal("expected matching priority to skip update")
+	}
+
+	if priorityUpdateRequired(
+		EnvironmentResourceModel{Priority: types.Int64Unknown()},
+		sdk.Environment{Priority: 1},
+	) {
+		t.Fatal("expected unknown priority to skip update")
+	}
+}
+
 func TestInt64ValueChanged(t *testing.T) {
 	t.Parallel()
 

@@ -198,7 +198,17 @@ func (r *EnvironmentResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	state := stateFromEnvironment(plan, rsp.JSON201.Data)
+	environment := rsp.JSON201.Data
+	if priorityUpdateRequired(plan, environment) {
+		updated, err := updateEnvironmentPriority(ctx, r.client, plan, environment)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed To Set Environment Priority", err.Error())
+			return
+		}
+		environment = updated
+	}
+
+	state := stateFromEnvironment(plan, environment)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -445,6 +455,53 @@ func buildUpdateEnvironmentBody(plan, state EnvironmentResourceModel) (sdk.Updat
 	}
 
 	return body, diags
+}
+
+func priorityUpdateRequired(plan EnvironmentResourceModel, env sdk.Environment) bool {
+	if plan.Priority.IsNull() || plan.Priority.IsUnknown() {
+		return false
+	}
+	return env.Priority != int(plan.Priority.ValueInt64())
+}
+
+func updateEnvironmentPriority(ctx context.Context, client *sdk.ClientWithResponses, plan EnvironmentResourceModel, env sdk.Environment) (sdk.Environment, error) {
+	priority := int(plan.Priority.ValueInt64())
+	body := sdk.UpdateEnvironmentJSONRequestBody{
+		Priority: &priority,
+	}
+
+	rsp, err := client.UpdateEnvironmentWithResponse(
+		ctx,
+		plan.OrgName.ValueString(),
+		plan.AppSlug.ValueString(),
+		plan.JobSlug.ValueString(),
+		env.Slug,
+		body,
+	)
+	if err != nil {
+		return sdk.Environment{}, err
+	}
+
+	if rsp.JSON400 != nil {
+		return sdk.Environment{}, fmt.Errorf("failed to update environment priority: %s", formatAPIError(rsp.JSON400))
+	}
+	if rsp.JSON401 != nil {
+		return sdk.Environment{}, fmt.Errorf("unauthorized updating environment priority: %s", formatAPIError(rsp.JSON401))
+	}
+	if rsp.JSON403 != nil {
+		return sdk.Environment{}, fmt.Errorf("forbidden updating environment priority: %s", formatAPIError(rsp.JSON403))
+	}
+	if rsp.JSON404 != nil {
+		return sdk.Environment{}, fmt.Errorf("environment %q for job %q in app %q in org %q not found after create", env.Slug, plan.JobSlug.ValueString(), plan.AppSlug.ValueString(), plan.OrgName.ValueString())
+	}
+	if rsp.JSON500 != nil {
+		return sdk.Environment{}, fmt.Errorf("failed to update environment priority: %s", formatAPIError(rsp.JSON500))
+	}
+	if rsp.JSON200 == nil {
+		return sdk.Environment{}, fmt.Errorf("expected 200 response when updating environment priority, got %s", rsp.Status())
+	}
+
+	return rsp.JSON200.Data, nil
 }
 
 func stateFromEnvironment(base EnvironmentResourceModel, env sdk.Environment) EnvironmentResourceModel {
