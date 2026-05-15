@@ -252,6 +252,26 @@ func TestConfiguredVariableValue(t *testing.T) {
 	}
 }
 
+func TestAttributeIsKnownMissing(t *testing.T) {
+	t.Parallel()
+
+	if !attributeIsKnownMissing(types.StringNull()) {
+		t.Fatal("expected null string to be known missing")
+	}
+	if !attributeIsKnownMissing(types.StringValue("")) {
+		t.Fatal("expected empty string to be known missing")
+	}
+	if !attributeIsKnownMissing(types.StringValue("   ")) {
+		t.Fatal("expected whitespace string to be known missing")
+	}
+	if attributeIsKnownMissing(types.StringUnknown()) {
+		t.Fatal("expected unknown string to be deferred, not known missing")
+	}
+	if attributeIsKnownMissing(types.StringValue("platform")) {
+		t.Fatal("expected non-empty string to be present")
+	}
+}
+
 func TestConfiguredVariableEnvironmentValue(t *testing.T) {
 	t.Parallel()
 

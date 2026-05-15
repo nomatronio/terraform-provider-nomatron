@@ -247,7 +247,7 @@ func (r *VariableResource) ValidateConfig(ctx context.Context, req resource.Vali
 			resp.Diagnostics.AddAttributeError(path.Root("job_slug"), "Invalid Scope Configuration", "`job_slug` must not be set for global variables.")
 		}
 	case variableScopeOrganization:
-		if !attributeIsSet(data.OrgName) {
+		if attributeIsKnownMissing(data.OrgName) {
 			resp.Diagnostics.AddAttributeError(path.Root("org_name"), "Missing Scope Attribute", "`org_name` is required for organization scoped variables.")
 		}
 		if attributeIsSet(data.AppSlug) {
@@ -257,23 +257,23 @@ func (r *VariableResource) ValidateConfig(ctx context.Context, req resource.Vali
 			resp.Diagnostics.AddAttributeError(path.Root("job_slug"), "Invalid Scope Configuration", "`job_slug` must not be set for organization scoped variables.")
 		}
 	case variableScopeApp:
-		if !attributeIsSet(data.OrgName) {
+		if attributeIsKnownMissing(data.OrgName) {
 			resp.Diagnostics.AddAttributeError(path.Root("org_name"), "Missing Scope Attribute", "`org_name` is required for app scoped variables.")
 		}
-		if !attributeIsSet(data.AppSlug) {
+		if attributeIsKnownMissing(data.AppSlug) {
 			resp.Diagnostics.AddAttributeError(path.Root("app_slug"), "Missing Scope Attribute", "`app_slug` is required for app scoped variables.")
 		}
 		if attributeIsSet(data.JobSlug) {
 			resp.Diagnostics.AddAttributeError(path.Root("job_slug"), "Invalid Scope Configuration", "`job_slug` must not be set for app scoped variables.")
 		}
 	case variableScopeJob:
-		if !attributeIsSet(data.OrgName) {
+		if attributeIsKnownMissing(data.OrgName) {
 			resp.Diagnostics.AddAttributeError(path.Root("org_name"), "Missing Scope Attribute", "`org_name` is required for job scoped variables.")
 		}
-		if !attributeIsSet(data.AppSlug) {
+		if attributeIsKnownMissing(data.AppSlug) {
 			resp.Diagnostics.AddAttributeError(path.Root("app_slug"), "Missing Scope Attribute", "`app_slug` is required for job scoped variables.")
 		}
-		if !attributeIsSet(data.JobSlug) {
+		if attributeIsKnownMissing(data.JobSlug) {
 			resp.Diagnostics.AddAttributeError(path.Root("job_slug"), "Missing Scope Attribute", "`job_slug` is required for job scoped variables.")
 		}
 	default:
@@ -634,6 +634,10 @@ func variableBoolFromSensitivity(raw string) types.Bool {
 
 func attributeIsSet(v types.String) bool {
 	return !v.IsNull() && !v.IsUnknown() && strings.TrimSpace(v.ValueString()) != ""
+}
+
+func attributeIsKnownMissing(v types.String) bool {
+	return v.IsNull() || (!v.IsUnknown() && strings.TrimSpace(v.ValueString()) == "")
 }
 
 func configuredVariableValue(plan, config VariableResourceModel) (string, bool) {
