@@ -155,9 +155,10 @@ func TestStateFromVariable_NonSensitive(t *testing.T) {
 		Scope:   types.StringValue("app"),
 		OrgName: types.StringValue("platform"),
 		AppSlug: types.StringValue("payments"),
+		Key:     types.StringValue("region"),
 	}, sdk.Variable{
 		Id:           variableID,
-		Key:          "region",
+		Key:          "REGION",
 		Description:  &description,
 		Scope:        "app",
 		Sensitivity:  "normal",

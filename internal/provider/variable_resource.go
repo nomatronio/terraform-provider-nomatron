@@ -1193,13 +1193,18 @@ func stateFromVariable(base VariableResourceModel, variableRecord sdk.Variable, 
 		updatedAt = types.StringValue(variableRecord.UpdatedAt.Format(time.RFC3339))
 	}
 
+	key := types.StringValue(variableRecord.Key)
+	if !base.Key.IsUnknown() && !base.Key.IsNull() {
+		key = base.Key
+	}
+
 	return VariableResourceModel{
 		ID:                types.StringValue(variableRecord.Id.String()),
 		Scope:             types.StringValue(normalizeVariableScope(variableRecord.Scope)),
 		OrgName:           base.OrgName,
 		AppSlug:           base.AppSlug,
 		JobSlug:           base.JobSlug,
-		Key:               types.StringValue(variableRecord.Key),
+		Key:               key,
 		Description:       description,
 		Sensitive:         variableBoolFromSensitivity(variableRecord.Sensitivity),
 		ValueType:         valueType,
