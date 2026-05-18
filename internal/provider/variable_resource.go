@@ -169,7 +169,7 @@ func (r *VariableResource) Schema(ctx context.Context, req resource.SchemaReques
 			},
 			"environment_values": schema.ListNestedAttribute{
 				Optional:            true,
-				MarkdownDescription: "Environment-specific values for job-scoped variables.",
+				MarkdownDescription: "Environment-specific values for app or job scoped variables.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"environment_slug": schema.StringAttribute{
@@ -280,8 +280,8 @@ func (r *VariableResource) ValidateConfig(ctx context.Context, req resource.Vali
 		resp.Diagnostics.AddAttributeError(path.Root("scope"), "Invalid Scope", "`scope` must be one of `global`, `organization`, `app`, or `job`.")
 	}
 
-	if len(data.EnvironmentValues) > 0 && scope != variableScopeJob {
-		resp.Diagnostics.AddAttributeError(path.Root("environment_values"), "Invalid Scope Configuration", "`environment_values` can only be set for job scoped variables.")
+	if len(data.EnvironmentValues) > 0 && scope != variableScopeApp && scope != variableScopeJob {
+		resp.Diagnostics.AddAttributeError(path.Root("environment_values"), "Invalid Scope Configuration", "`environment_values` can only be set for app or job scoped variables.")
 	}
 
 	if attributeIsSet(data.Value) && attributeIsSet(data.ValueWO) {
@@ -1017,7 +1017,8 @@ func upsertVariableDefaultValueByScope(ctx context.Context, client *sdk.ClientWi
 }
 
 func upsertConfiguredVariableEnvironmentValues(ctx context.Context, client *sdk.ClientWithResponses, plan, config VariableResourceModel, variableID openapi_types.UUID) ([]sdk.VariableValue, error) {
-	if normalizeVariableScope(plan.Scope.ValueString()) != variableScopeJob || len(plan.EnvironmentValues) == 0 {
+	scope := normalizeVariableScope(plan.Scope.ValueString())
+	if (scope != variableScopeApp && scope != variableScopeJob) || len(plan.EnvironmentValues) == 0 {
 		return nil, nil
 	}
 
@@ -1042,6 +1043,25 @@ func upsertVariableEnvironmentValue(ctx context.Context, client *sdk.ClientWithR
 	body := sdk.UpsertVariableValueRequest{
 		Value: &value,
 	}
+
+	scope := normalizeVariableScope(data.Scope.ValueString())
+	if scope == variableScopeApp {
+		rsp, err := client.UpsertAppVariableEnvValueWithResponse(ctx, data.OrgName.ValueString(), data.AppSlug.ValueString(), variableID, envSlug, body)
+		if err != nil {
+			return sdk.VariableValue{}, err
+		}
+		if rsp.JSON400 != nil {
+			return sdk.VariableValue{}, fmt.Errorf("failed to upsert app variable environment value %q for variable %q: %s", envSlug, variableID.String(), formatAPIError(rsp.JSON400))
+		}
+		if rsp.JSON404 != nil {
+			return sdk.VariableValue{}, &variableNotFoundError{scope: data.Scope.ValueString(), id: variableID.String()}
+		}
+		if rsp.JSON200 == nil {
+			return sdk.VariableValue{}, fmt.Errorf("expected 200 response when upserting app variable environment value %q for variable %q, got %s", envSlug, variableID.String(), rsp.Status())
+		}
+		return rsp.JSON200.Data, nil
+	}
+
 	rsp, err := client.UpsertAppJobVariableEnvValueWithResponse(ctx, data.OrgName.ValueString(), data.AppSlug.ValueString(), data.JobSlug.ValueString(), variableID, envSlug, body)
 	if err != nil {
 		return sdk.VariableValue{}, err
@@ -1059,7 +1079,8 @@ func upsertVariableEnvironmentValue(ctx context.Context, client *sdk.ClientWithR
 }
 
 func listConfiguredVariableEnvironmentValues(ctx context.Context, client *sdk.ClientWithResponses, data VariableResourceModel, variableID openapi_types.UUID) ([]sdk.VariableValue, error) {
-	if normalizeVariableScope(data.Scope.ValueString()) != variableScopeJob || len(data.EnvironmentValues) == 0 {
+	scope := normalizeVariableScope(data.Scope.ValueString())
+	if (scope != variableScopeApp && scope != variableScopeJob) || len(data.EnvironmentValues) == 0 {
 		return nil, nil
 	}
 
@@ -1080,6 +1101,20 @@ func listConfiguredVariableEnvironmentValues(ctx context.Context, client *sdk.Cl
 }
 
 func getVariableEnvironmentValue(ctx context.Context, client *sdk.ClientWithResponses, data VariableResourceModel, variableID openapi_types.UUID, envSlug string) (sdk.VariableValue, bool, error) {
+	if normalizeVariableScope(data.Scope.ValueString()) == variableScopeApp {
+		rsp, err := client.GetAppVariableEnvValueWithResponse(ctx, data.OrgName.ValueString(), data.AppSlug.ValueString(), variableID, envSlug)
+		if err != nil {
+			return sdk.VariableValue{}, false, err
+		}
+		if rsp.JSON404 != nil {
+			return sdk.VariableValue{}, false, nil
+		}
+		if rsp.JSON200 == nil {
+			return sdk.VariableValue{}, false, fmt.Errorf("expected 200 response when reading app variable environment value %q for variable %q, got %s", envSlug, variableID.String(), rsp.Status())
+		}
+		return rsp.JSON200.Data, true, nil
+	}
+
 	rsp, err := client.GetAppJobVariableEnvValueWithResponse(ctx, data.OrgName.ValueString(), data.AppSlug.ValueString(), data.JobSlug.ValueString(), variableID, envSlug)
 	if err != nil {
 		return sdk.VariableValue{}, false, err
@@ -1094,7 +1129,8 @@ func getVariableEnvironmentValue(ctx context.Context, client *sdk.ClientWithResp
 }
 
 func deleteRemovedVariableEnvironmentValues(ctx context.Context, client *sdk.ClientWithResponses, plan, state VariableResourceModel, variableID openapi_types.UUID) error {
-	if normalizeVariableScope(state.Scope.ValueString()) != variableScopeJob {
+	scope := normalizeVariableScope(state.Scope.ValueString())
+	if scope != variableScopeApp && scope != variableScopeJob {
 		return nil
 	}
 
@@ -1114,14 +1150,28 @@ func deleteRemovedVariableEnvironmentValues(ctx context.Context, client *sdk.Cli
 		if err != nil {
 			return err
 		}
-		if err := deleteJobVariableValue(ctx, client, state, variableID, valueID); err != nil {
+		if err := deleteVariableEnvironmentValue(ctx, client, state, variableID, valueID); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func deleteJobVariableValue(ctx context.Context, client *sdk.ClientWithResponses, data VariableResourceModel, variableID, valueID openapi_types.UUID) error {
+func deleteVariableEnvironmentValue(ctx context.Context, client *sdk.ClientWithResponses, data VariableResourceModel, variableID, valueID openapi_types.UUID) error {
+	if normalizeVariableScope(data.Scope.ValueString()) == variableScopeApp {
+		rsp, err := client.DeleteAppVariableValueWithResponse(ctx, data.OrgName.ValueString(), data.AppSlug.ValueString(), variableID, valueID)
+		if err != nil {
+			return err
+		}
+		if rsp.JSON404 != nil {
+			return nil
+		}
+		if rsp.StatusCode() != http.StatusNoContent && rsp.StatusCode() != http.StatusOK {
+			return fmt.Errorf("expected 200/204 response when deleting app variable value %q for variable %q, got %s", valueID.String(), variableID.String(), rsp.Status())
+		}
+		return nil
+	}
+
 	rsp, err := client.DeleteAppJobVariableValueWithResponse(ctx, data.OrgName.ValueString(), data.AppSlug.ValueString(), data.JobSlug.ValueString(), variableID, valueID)
 	if err != nil {
 		return err

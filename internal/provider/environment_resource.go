@@ -31,7 +31,6 @@ func NewEnvironmentResource() resource.Resource {
 type EnvironmentResourceModel struct {
 	OrgName   types.String `tfsdk:"org_name"`
 	AppSlug   types.String `tfsdk:"app_slug"`
-	JobSlug   types.String `tfsdk:"job_slug"`
 	ID        types.String `tfsdk:"id"`
 	Slug      types.String `tfsdk:"slug"`
 	Name      types.String `tfsdk:"name"`
@@ -60,13 +59,6 @@ func (r *EnvironmentResource) Schema(ctx context.Context, req resource.SchemaReq
 			"app_slug": schema.StringAttribute{
 				Required:            true,
 				MarkdownDescription: "Application slug that owns the environment.",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"job_slug": schema.StringAttribute{
-				Required:            true,
-				MarkdownDescription: "Job slug that owns the environment.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -160,7 +152,7 @@ func (r *EnvironmentResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	rsp, err := r.client.CreateEnvironmentWithResponse(ctx, plan.OrgName.ValueString(), plan.AppSlug.ValueString(), plan.JobSlug.ValueString(), body)
+	rsp, err := r.client.CreateEnvironmentWithResponse(ctx, plan.OrgName.ValueString(), plan.AppSlug.ValueString(), body)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed To Create Environment", err.Error())
 		return
@@ -179,7 +171,7 @@ func (r *EnvironmentResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 	if rsp.JSON404 != nil {
-		resp.Diagnostics.AddError("Job Or Cluster Not Found", formatAPIError(rsp.JSON404))
+		resp.Diagnostics.AddError("Application Or Cluster Not Found", formatAPIError(rsp.JSON404))
 		return
 	}
 	if rsp.JSON409 != nil {
@@ -228,7 +220,7 @@ func (r *EnvironmentResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	env, err := readEnvironment(ctx, r.client, state.OrgName.ValueString(), state.AppSlug.ValueString(), state.JobSlug.ValueString(), state.Slug.ValueString())
+	env, err := readEnvironment(ctx, r.client, state.OrgName.ValueString(), state.AppSlug.ValueString(), state.Slug.ValueString())
 	if err != nil {
 		if isEnvironmentNotFound(err) {
 			resp.State.RemoveResource(ctx)
@@ -266,7 +258,7 @@ func (r *EnvironmentResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	rsp, err := r.client.UpdateEnvironmentWithResponse(ctx, state.OrgName.ValueString(), state.AppSlug.ValueString(), state.JobSlug.ValueString(), state.Slug.ValueString(), body)
+	rsp, err := r.client.UpdateEnvironmentWithResponse(ctx, state.OrgName.ValueString(), state.AppSlug.ValueString(), state.Slug.ValueString(), body)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed To Update Environment", err.Error())
 		return
@@ -295,7 +287,7 @@ func (r *EnvironmentResource) Update(ctx context.Context, req resource.UpdateReq
 	if rsp.JSON200 == nil {
 		resp.Diagnostics.AddError(
 			"Unexpected API Response",
-			fmt.Sprintf("Expected 200 response when updating environment %q for job %q in app %q in org %q, got %s.", state.Slug.ValueString(), state.JobSlug.ValueString(), state.AppSlug.ValueString(), state.OrgName.ValueString(), rsp.Status()),
+			fmt.Sprintf("Expected 200 response when updating environment %q in app %q in org %q, got %s.", state.Slug.ValueString(), state.AppSlug.ValueString(), state.OrgName.ValueString(), rsp.Status()),
 		)
 		return
 	}
@@ -320,7 +312,7 @@ func (r *EnvironmentResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 
-	rsp, err := r.client.DeleteEnvironmentWithResponse(ctx, state.OrgName.ValueString(), state.AppSlug.ValueString(), state.JobSlug.ValueString(), state.Slug.ValueString())
+	rsp, err := r.client.DeleteEnvironmentWithResponse(ctx, state.OrgName.ValueString(), state.AppSlug.ValueString(), state.Slug.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed To Delete Environment", err.Error())
 		return
@@ -344,14 +336,14 @@ func (r *EnvironmentResource) Delete(ctx context.Context, req resource.DeleteReq
 	if rsp.StatusCode() != http.StatusNoContent && rsp.StatusCode() != http.StatusOK {
 		resp.Diagnostics.AddError(
 			"Unexpected API Response",
-			fmt.Sprintf("Expected 200/204 response when deleting environment %q for job %q in app %q in org %q, got %s.", state.Slug.ValueString(), state.JobSlug.ValueString(), state.AppSlug.ValueString(), state.OrgName.ValueString(), rsp.Status()),
+			fmt.Sprintf("Expected 200/204 response when deleting environment %q in app %q in org %q, got %s.", state.Slug.ValueString(), state.AppSlug.ValueString(), state.OrgName.ValueString(), rsp.Status()),
 		)
 		return
 	}
 }
 
 func (r *EnvironmentResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	orgName, appSlug, jobSlug, environmentSlug, err := parseEnvironmentImportID(req.ID)
+	orgName, appSlug, environmentSlug, err := parseEnvironmentImportID(req.ID)
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid Import ID", err.Error())
 		return
@@ -359,19 +351,17 @@ func (r *EnvironmentResource) ImportState(ctx context.Context, req resource.Impo
 
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("org_name"), orgName)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("app_slug"), appSlug)...)
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("job_slug"), jobSlug)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("slug"), environmentSlug)...)
 }
 
 type environmentNotFoundError struct {
 	orgName         string
 	appSlug         string
-	jobSlug         string
 	environmentSlug string
 }
 
 func (e *environmentNotFoundError) Error() string {
-	return fmt.Sprintf("environment %q for job %q in app %q in org %q not found", e.environmentSlug, e.jobSlug, e.appSlug, e.orgName)
+	return fmt.Sprintf("environment %q in app %q in org %q not found", e.environmentSlug, e.appSlug, e.orgName)
 }
 
 func isEnvironmentNotFound(err error) bool {
@@ -379,16 +369,16 @@ func isEnvironmentNotFound(err error) bool {
 	return ok
 }
 
-func parseEnvironmentImportID(raw string) (orgName, appSlug, jobSlug, environmentSlug string, err error) {
-	parts := strings.SplitN(raw, "/", 4)
-	if len(parts) != 4 || parts[0] == "" || parts[1] == "" || parts[2] == "" || parts[3] == "" {
-		return "", "", "", "", fmt.Errorf("expected import identifier in the format `org_name/app_slug/job_slug/environment_slug`")
+func parseEnvironmentImportID(raw string) (orgName, appSlug, environmentSlug string, err error) {
+	parts := strings.Split(raw, "/")
+	if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+		return "", "", "", fmt.Errorf("expected import identifier in the format `org_name/app_slug/environment_slug`")
 	}
-	return parts[0], parts[1], parts[2], parts[3], nil
+	return parts[0], parts[1], parts[2], nil
 }
 
-func readEnvironment(ctx context.Context, client *sdk.ClientWithResponses, orgName, appSlug, jobSlug, environmentSlug string) (sdk.Environment, error) {
-	rsp, err := client.GetEnvironmentWithResponse(ctx, orgName, appSlug, jobSlug, environmentSlug)
+func readEnvironment(ctx context.Context, client *sdk.ClientWithResponses, orgName, appSlug, environmentSlug string) (sdk.Environment, error) {
+	rsp, err := client.GetEnvironmentWithResponse(ctx, orgName, appSlug, environmentSlug)
 	if err != nil {
 		return sdk.Environment{}, err
 	}
@@ -397,12 +387,11 @@ func readEnvironment(ctx context.Context, client *sdk.ClientWithResponses, orgNa
 		return sdk.Environment{}, &environmentNotFoundError{
 			orgName:         orgName,
 			appSlug:         appSlug,
-			jobSlug:         jobSlug,
 			environmentSlug: environmentSlug,
 		}
 	}
 	if rsp.JSON200 == nil {
-		return sdk.Environment{}, fmt.Errorf("expected 200 response when reading environment %q for job %q in app %q in org %q, got %s", environmentSlug, jobSlug, appSlug, orgName, rsp.Status())
+		return sdk.Environment{}, fmt.Errorf("expected 200 response when reading environment %q in app %q in org %q, got %s", environmentSlug, appSlug, orgName, rsp.Status())
 	}
 
 	return rsp.JSON200.Data, nil
@@ -474,7 +463,6 @@ func updateEnvironmentPriority(ctx context.Context, client *sdk.ClientWithRespon
 		ctx,
 		plan.OrgName.ValueString(),
 		plan.AppSlug.ValueString(),
-		plan.JobSlug.ValueString(),
 		env.Slug,
 		body,
 	)
@@ -492,7 +480,7 @@ func updateEnvironmentPriority(ctx context.Context, client *sdk.ClientWithRespon
 		return sdk.Environment{}, fmt.Errorf("forbidden updating environment priority: %s", formatAPIError(rsp.JSON403))
 	}
 	if rsp.JSON404 != nil {
-		return sdk.Environment{}, fmt.Errorf("environment %q for job %q in app %q in org %q not found after create", env.Slug, plan.JobSlug.ValueString(), plan.AppSlug.ValueString(), plan.OrgName.ValueString())
+		return sdk.Environment{}, fmt.Errorf("environment %q in app %q in org %q not found after create", env.Slug, plan.AppSlug.ValueString(), plan.OrgName.ValueString())
 	}
 	if rsp.JSON500 != nil {
 		return sdk.Environment{}, fmt.Errorf("failed to update environment priority: %s", formatAPIError(rsp.JSON500))
@@ -518,7 +506,6 @@ func stateFromEnvironment(base EnvironmentResourceModel, env sdk.Environment) En
 	return EnvironmentResourceModel{
 		OrgName:   base.OrgName,
 		AppSlug:   base.AppSlug,
-		JobSlug:   base.JobSlug,
 		ID:        types.StringValue(env.Id.String()),
 		Slug:      types.StringValue(env.Slug),
 		Name:      types.StringValue(env.Name),

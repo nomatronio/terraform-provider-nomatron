@@ -3,12 +3,12 @@
 page_title: "nomatron_environment Data Source - nomatron"
 subcategory: ""
 description: |-
-  Fetch a single Nomatron application environment by organization name, application slug, job slug, and exact environment slug.
+  Fetch a single Nomatron application environment by organization name, application slug, and exact environment slug.
 ---
 
 # nomatron_environment (Data Source)
 
-Fetch a single Nomatron application environment by organization name, application slug, job slug, and exact environment slug.
+Fetch a single Nomatron application environment by organization name, application slug, and exact environment slug.
 
 ## Example Usage
 
@@ -16,7 +16,6 @@ Fetch a single Nomatron application environment by organization name, applicatio
 data "nomatron_environment" "example" {
   org_name = "platform"
   app_slug = "payments"
-  job_slug = "web"
   slug     = "prod"
 }
 ```
@@ -27,7 +26,6 @@ data "nomatron_environment" "example" {
 ### Required
 
 - `app_slug` (String) Application slug that owns the environment.
-- `job_slug` (String) Job slug that owns the environment.
 - `org_name` (String) Organization name that owns the application.
 - `slug` (String) Exact environment slug.
 

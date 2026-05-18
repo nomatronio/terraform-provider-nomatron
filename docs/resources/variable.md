@@ -14,10 +14,9 @@ Nomatron variable resource supporting global, organization, application, and job
 
 ```terraform
 resource "nomatron_variable" "example" {
-  scope     = "job"
+  scope     = "app"
   org_name  = "platform"
   app_slug  = "payments"
-  job_slug  = "web"
   key       = "db_password"
   sensitive = true
   value_wo  = "super-secret-password"
@@ -49,7 +48,7 @@ resource "nomatron_variable" "example" {
 
 - `app_slug` (String) Application slug for app or job scoped variables.
 - `description` (String) Optional variable description.
-- `environment_values` (Attributes List) Environment-specific values for job-scoped variables. (see [below for nested schema](#nestedatt--environment_values))
+- `environment_values` (Attributes List) Environment-specific values for app or job scoped variables. (see [below for nested schema](#nestedatt--environment_values))
 - `job_slug` (String) Job slug for job scoped variables.
 - `org_name` (String) Organization name for organization, app, or job scoped variables.
 - `sensitive` (Boolean) Whether the variable value is sensitive.

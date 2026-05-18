@@ -1,7 +1,6 @@
 resource "nomatron_environment" "example" {
   org_name   = "platform"
   app_slug   = "payments"
-  job_slug   = "web"
   name       = "Production"
   slug       = "prod"
   cluster_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"

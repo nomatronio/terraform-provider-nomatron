@@ -1,7 +1,9 @@
 package provider
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -30,7 +32,6 @@ type JobApprovalPolicyResourceModel struct {
 	ID               types.String                            `tfsdk:"id"`
 	OrgName          types.String                            `tfsdk:"org_name"`
 	AppSlug          types.String                            `tfsdk:"app_slug"`
-	JobSlug          types.String                            `tfsdk:"job_slug"`
 	Version          types.Int64                             `tfsdk:"version"`
 	DefaultRule      JobApprovalPolicyRuleModel              `tfsdk:"default_rule"`
 	EnvironmentRules []JobApprovalPolicyEnvironmentRuleModel `tfsdk:"environment_rules"`
@@ -49,13 +50,39 @@ type JobApprovalPolicyEnvironmentRuleModel struct {
 	Groups            types.List   `tfsdk:"groups"`
 }
 
+type approvalPolicyDTO struct {
+	Version          int                            `json:"version"`
+	DefaultRule      approvalPolicyRuleDTO          `json:"default_rule"`
+	EnvironmentRules []approvalPolicyEnvironmentDTO `json:"environment_rules,omitempty"`
+}
+
+type approvalPolicyRuleDTO struct {
+	RequiredApprovals int                        `json:"required_approvals"`
+	Approvers         approvalPolicyApproversDTO `json:"approvers"`
+}
+
+type approvalPolicyEnvironmentDTO struct {
+	Environment       string                     `json:"environment"`
+	RequiredApprovals int                        `json:"required_approvals"`
+	Approvers         approvalPolicyApproversDTO `json:"approvers"`
+}
+
+type approvalPolicyApproversDTO struct {
+	Users  []string `json:"users"`
+	Groups []string `json:"groups"`
+}
+
+type approvalPolicyAPIResponse struct {
+	Data approvalPolicyDTO `json:"data"`
+}
+
 func (r *JobApprovalPolicyResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_job_approval_policy"
+	resp.TypeName = req.ProviderTypeName + "_approval_policy"
 }
 
 func (r *JobApprovalPolicyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Nomatron job approval policy resource.",
+		MarkdownDescription: "Nomatron application approval policy resource.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:            true,
@@ -73,14 +100,7 @@ func (r *JobApprovalPolicyResource) Schema(ctx context.Context, req resource.Sch
 			},
 			"app_slug": schema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: "Application slug that owns the job.",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"job_slug": schema.StringAttribute{
-				Required:            true,
-				MarkdownDescription: "Job slug that owns the approval policy.",
+				MarkdownDescription: "Application slug that owns the approval policy.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -128,23 +148,23 @@ func (r *JobApprovalPolicyResource) Create(ctx context.Context, req resource.Cre
 	}
 
 	if r.client == nil {
-		resp.Diagnostics.AddError("Client Not Configured", "The provider client was not configured for the job approval policy resource.")
+		resp.Diagnostics.AddError("Client Not Configured", "The provider client was not configured for the approval policy resource.")
 		return
 	}
 
-	body, diags := buildUpsertApprovalPolicyBody(ctx, plan)
+	body, envIDsByName, diags := buildUpsertApprovalPolicyBody(ctx, r.client, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	policy, err := upsertApprovalPolicy(ctx, r.client, plan.OrgName.ValueString(), plan.AppSlug.ValueString(), plan.JobSlug.ValueString(), body)
+	policy, err := upsertApprovalPolicy(ctx, r.client, plan.OrgName.ValueString(), plan.AppSlug.ValueString(), body)
 	if err != nil {
-		resp.Diagnostics.AddError("Failed To Upsert Job Approval Policy", err.Error())
+		resp.Diagnostics.AddError("Failed To Upsert Approval Policy", err.Error())
 		return
 	}
 
-	state, diags := stateFromApprovalPolicy(ctx, plan, policy)
+	state, diags := stateFromApprovalPolicy(ctx, plan, policy, envIDsByName)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -161,21 +181,30 @@ func (r *JobApprovalPolicyResource) Read(ctx context.Context, req resource.ReadR
 	}
 
 	if r.client == nil {
-		resp.Diagnostics.AddError("Client Not Configured", "The provider client was not configured for the job approval policy resource.")
+		resp.Diagnostics.AddError("Client Not Configured", "The provider client was not configured for the approval policy resource.")
 		return
 	}
 
-	policy, err := readApprovalPolicy(ctx, r.client, state.OrgName.ValueString(), state.AppSlug.ValueString(), state.JobSlug.ValueString())
+	policy, err := readApprovalPolicy(ctx, r.client, state.OrgName.ValueString(), state.AppSlug.ValueString())
 	if err != nil {
 		if isApprovalPolicyNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError("Failed To Read Job Approval Policy", err.Error())
+		resp.Diagnostics.AddError("Failed To Read Approval Policy", err.Error())
 		return
 	}
 
-	newState, diags := stateFromApprovalPolicy(ctx, state, policy)
+	envIDsByName := map[string]string{}
+	if len(policy.EnvironmentRules) > 0 {
+		envIDsByName, err = approvalPolicyEnvironmentIDsByName(ctx, r.client, state)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed To Read Approval Policy Environments", err.Error())
+			return
+		}
+	}
+
+	newState, diags := stateFromApprovalPolicy(ctx, state, policy, envIDsByName)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -192,23 +221,23 @@ func (r *JobApprovalPolicyResource) Update(ctx context.Context, req resource.Upd
 	}
 
 	if r.client == nil {
-		resp.Diagnostics.AddError("Client Not Configured", "The provider client was not configured for the job approval policy resource.")
+		resp.Diagnostics.AddError("Client Not Configured", "The provider client was not configured for the approval policy resource.")
 		return
 	}
 
-	body, diags := buildUpsertApprovalPolicyBody(ctx, plan)
+	body, envIDsByName, diags := buildUpsertApprovalPolicyBody(ctx, r.client, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	policy, err := upsertApprovalPolicy(ctx, r.client, plan.OrgName.ValueString(), plan.AppSlug.ValueString(), plan.JobSlug.ValueString(), body)
+	policy, err := upsertApprovalPolicy(ctx, r.client, plan.OrgName.ValueString(), plan.AppSlug.ValueString(), body)
 	if err != nil {
-		resp.Diagnostics.AddError("Failed To Update Job Approval Policy", err.Error())
+		resp.Diagnostics.AddError("Failed To Update Approval Policy", err.Error())
 		return
 	}
 
-	state, diags := stateFromApprovalPolicy(ctx, plan, policy)
+	state, diags := stateFromApprovalPolicy(ctx, plan, policy, envIDsByName)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -225,32 +254,32 @@ func (r *JobApprovalPolicyResource) Delete(ctx context.Context, req resource.Del
 	}
 
 	if r.client == nil {
-		resp.Diagnostics.AddError("Client Not Configured", "The provider client was not configured for the job approval policy resource.")
+		resp.Diagnostics.AddError("Client Not Configured", "The provider client was not configured for the approval policy resource.")
 		return
 	}
 
-	body := sdk.UpsertApprovalPolicyJSONRequestBody{
-		DefaultRule: sdk.UpsertApprovalRule{
+	body := approvalPolicyDTO{
+		DefaultRule: approvalPolicyRuleDTO{
 			RequiredApprovals: 0,
-			Approvers: sdk.UpsertApprovalApprovers{
+			Approvers: approvalPolicyApproversDTO{
 				Users:  []string{},
 				Groups: []string{},
 			},
 		},
-		EnvironmentRules: []sdk.UpsertEnvironmentApprovalRule{},
+		EnvironmentRules: []approvalPolicyEnvironmentDTO{},
 	}
 
-	if _, err := upsertApprovalPolicy(ctx, r.client, state.OrgName.ValueString(), state.AppSlug.ValueString(), state.JobSlug.ValueString(), body); err != nil {
+	if _, err := upsertApprovalPolicy(ctx, r.client, state.OrgName.ValueString(), state.AppSlug.ValueString(), body); err != nil {
 		if isApprovalPolicyNotFound(err) {
 			return
 		}
-		resp.Diagnostics.AddError("Failed To Clear Job Approval Policy", err.Error())
+		resp.Diagnostics.AddError("Failed To Clear Approval Policy", err.Error())
 		return
 	}
 }
 
 func (r *JobApprovalPolicyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	orgName, appSlug, jobSlug, err := parseJobImportID(req.ID)
+	orgName, appSlug, err := parseApprovalPolicyImportID(req.ID)
 	if err != nil {
 		resp.Diagnostics.AddError("Invalid Import ID", err.Error())
 		return
@@ -258,17 +287,15 @@ func (r *JobApprovalPolicyResource) ImportState(ctx context.Context, req resourc
 
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("org_name"), orgName)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("app_slug"), appSlug)...)
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("job_slug"), jobSlug)...)
 }
 
 type approvalPolicyNotFoundError struct {
 	orgName string
 	appSlug string
-	jobSlug string
 }
 
 func (e *approvalPolicyNotFoundError) Error() string {
-	return fmt.Sprintf("approval policy for job %q in app %q in org %q not found", e.jobSlug, e.appSlug, e.orgName)
+	return fmt.Sprintf("approval policy for app %q in org %q not found", e.appSlug, e.orgName)
 }
 
 func isApprovalPolicyNotFound(err error) bool {
@@ -276,70 +303,122 @@ func isApprovalPolicyNotFound(err error) bool {
 	return ok
 }
 
-func readApprovalPolicy(ctx context.Context, client *sdk.ClientWithResponses, orgName, appSlug, jobSlug string) (sdk.ApprovalPolicy, error) {
-	rsp, err := client.GetApprovalPolicyWithResponse(ctx, orgName, appSlug, jobSlug)
-	if err != nil {
-		return sdk.ApprovalPolicy{}, err
+func parseApprovalPolicyImportID(raw string) (orgName, appSlug string, err error) {
+	parts := strings.Split(raw, "/")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return "", "", fmt.Errorf("expected import identifier in the format `org_name/app_slug`")
 	}
-	if rsp.JSON404 != nil {
-		return sdk.ApprovalPolicy{}, &approvalPolicyNotFoundError{orgName: orgName, appSlug: appSlug, jobSlug: jobSlug}
-	}
-	if rsp.JSON401 != nil {
-		return sdk.ApprovalPolicy{}, fmt.Errorf("unauthorized reading approval policy: %s", formatAPIError(rsp.JSON401))
-	}
-	if rsp.JSON403 != nil {
-		return sdk.ApprovalPolicy{}, fmt.Errorf("forbidden reading approval policy: %s", formatAPIError(rsp.JSON403))
-	}
-	if rsp.JSON500 != nil {
-		return sdk.ApprovalPolicy{}, fmt.Errorf("failed to read approval policy: %s", formatAPIError(rsp.JSON500))
-	}
-	if rsp.JSON200 == nil {
-		return sdk.ApprovalPolicy{}, fmt.Errorf("expected 200 response when reading approval policy for job %q in app %q in org %q, got %s", jobSlug, appSlug, orgName, rsp.Status())
-	}
-	return rsp.JSON200.Data, nil
+	return parts[0], parts[1], nil
 }
 
-func upsertApprovalPolicy(ctx context.Context, client *sdk.ClientWithResponses, orgName, appSlug, jobSlug string, body sdk.UpsertApprovalPolicyJSONRequestBody) (sdk.ApprovalPolicy, error) {
-	rsp, err := client.UpsertApprovalPolicyWithResponse(ctx, orgName, appSlug, jobSlug, body)
+func readApprovalPolicy(ctx context.Context, client *sdk.ClientWithResponses, orgName, appSlug string) (approvalPolicyDTO, error) {
+	rsp, err := client.GetApprovalPolicyWithResponse(ctx, orgName, appSlug)
 	if err != nil {
-		return sdk.ApprovalPolicy{}, err
+		return approvalPolicyDTO{}, err
 	}
 	if rsp.JSON404 != nil {
-		return sdk.ApprovalPolicy{}, &approvalPolicyNotFoundError{orgName: orgName, appSlug: appSlug, jobSlug: jobSlug}
+		return approvalPolicyDTO{}, &approvalPolicyNotFoundError{orgName: orgName, appSlug: appSlug}
+	}
+	if rsp.JSON401 != nil {
+		return approvalPolicyDTO{}, fmt.Errorf("unauthorized reading approval policy: %s", formatAPIError(rsp.JSON401))
+	}
+	if rsp.JSON403 != nil {
+		return approvalPolicyDTO{}, fmt.Errorf("forbidden reading approval policy: %s", formatAPIError(rsp.JSON403))
+	}
+	if rsp.JSON500 != nil {
+		return approvalPolicyDTO{}, fmt.Errorf("failed to read approval policy: %s", formatAPIError(rsp.JSON500))
+	}
+	if rsp.JSON200 == nil {
+		return approvalPolicyDTO{}, fmt.Errorf("expected 200 response when reading approval policy for app %q in org %q, got %s", appSlug, orgName, rsp.Status())
+	}
+
+	policy, err := parseApprovalPolicyResponse(rsp.Body)
+	if err != nil {
+		return approvalPolicyDTO{}, err
+	}
+	return policy, nil
+}
+
+func upsertApprovalPolicy(ctx context.Context, client *sdk.ClientWithResponses, orgName, appSlug string, body approvalPolicyDTO) (approvalPolicyDTO, error) {
+	bodyBytes, err := json.Marshal(body)
+	if err != nil {
+		return approvalPolicyDTO{}, err
+	}
+	rsp, err := client.UpsertApprovalPolicyWithBodyWithResponse(ctx, orgName, appSlug, "application/json", bytes.NewReader(bodyBytes))
+	if err != nil {
+		return approvalPolicyDTO{}, err
+	}
+	if rsp.JSON404 != nil {
+		return approvalPolicyDTO{}, &approvalPolicyNotFoundError{orgName: orgName, appSlug: appSlug}
 	}
 	if rsp.JSON400 != nil {
-		return sdk.ApprovalPolicy{}, fmt.Errorf("failed to upsert approval policy: %s", formatAPIError(rsp.JSON400))
+		return approvalPolicyDTO{}, fmt.Errorf("failed to upsert approval policy: %s", formatAPIError(rsp.JSON400))
 	}
 	if rsp.JSON401 != nil {
-		return sdk.ApprovalPolicy{}, fmt.Errorf("unauthorized upserting approval policy: %s", formatAPIError(rsp.JSON401))
+		return approvalPolicyDTO{}, fmt.Errorf("unauthorized upserting approval policy: %s", formatAPIError(rsp.JSON401))
 	}
 	if rsp.JSON403 != nil {
-		return sdk.ApprovalPolicy{}, fmt.Errorf("forbidden upserting approval policy: %s", formatAPIError(rsp.JSON403))
+		return approvalPolicyDTO{}, fmt.Errorf("forbidden upserting approval policy: %s", formatAPIError(rsp.JSON403))
 	}
 	if rsp.JSON500 != nil {
-		return sdk.ApprovalPolicy{}, fmt.Errorf("failed to upsert approval policy: %s", formatAPIError(rsp.JSON500))
+		return approvalPolicyDTO{}, fmt.Errorf("failed to upsert approval policy: %s", formatAPIError(rsp.JSON500))
 	}
 	if rsp.JSON200 == nil {
-		return sdk.ApprovalPolicy{}, fmt.Errorf("expected 200 response when upserting approval policy for job %q in app %q in org %q, got %s", jobSlug, appSlug, orgName, rsp.Status())
+		return approvalPolicyDTO{}, fmt.Errorf("expected 200 response when upserting approval policy for app %q in org %q, got %s", appSlug, orgName, rsp.Status())
 	}
-	return rsp.JSON200.Data, nil
+
+	policy, err := parseApprovalPolicyResponse(rsp.Body)
+	if err != nil {
+		return approvalPolicyDTO{}, err
+	}
+	return policy, nil
 }
 
-func buildUpsertApprovalPolicyBody(ctx context.Context, plan JobApprovalPolicyResourceModel) (sdk.UpsertApprovalPolicyJSONRequestBody, diag.Diagnostics) {
+func parseApprovalPolicyResponse(body []byte) (approvalPolicyDTO, error) {
+	var response approvalPolicyAPIResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return approvalPolicyDTO{}, err
+	}
+	return response.Data, nil
+}
+
+func buildUpsertApprovalPolicyBody(ctx context.Context, client *sdk.ClientWithResponses, plan JobApprovalPolicyResourceModel) (approvalPolicyDTO, map[string]string, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	envNamesByID := map[string]string{}
+	envIDsByName := map[string]string{}
+	if len(plan.EnvironmentRules) > 0 {
+		var err error
+		envNamesByID, envIDsByName, err = approvalPolicyEnvironmentNameMaps(ctx, client, plan)
+		if err != nil {
+			diags.AddError("Failed To Resolve Approval Policy Environments", err.Error())
+			return approvalPolicyDTO{}, nil, diags
+		}
+	}
+
+	return buildUpsertApprovalPolicyBodyWithEnvironmentNames(ctx, plan, envNamesByID, envIDsByName)
+}
+
+func buildUpsertApprovalPolicyBodyWithEnvironmentNames(ctx context.Context, plan JobApprovalPolicyResourceModel, envNamesByID, envIDsByName map[string]string) (approvalPolicyDTO, map[string]string, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	defaultRule, ruleDiags := buildUpsertApprovalRule(ctx, plan.DefaultRule)
 	diags.Append(ruleDiags...)
 	if diags.HasError() {
-		return sdk.UpsertApprovalPolicyJSONRequestBody{}, diags
+		return approvalPolicyDTO{}, nil, diags
 	}
 
-	envRules := make([]sdk.UpsertEnvironmentApprovalRule, 0, len(plan.EnvironmentRules))
+	envRules := make([]approvalPolicyEnvironmentDTO, 0, len(plan.EnvironmentRules))
 	for _, rule := range plan.EnvironmentRules {
 		envID, err := parseApplicationID(rule.EnvironmentID.ValueString())
 		if err != nil {
 			diags.AddError("Invalid Environment ID", err.Error())
-			return sdk.UpsertApprovalPolicyJSONRequestBody{}, diags
+			return approvalPolicyDTO{}, nil, diags
+		}
+		envName, ok := envNamesByID[envID.String()]
+		if !ok {
+			diags.AddError("Invalid Environment ID", fmt.Sprintf("environment %q was not found in app %q", envID.String(), plan.AppSlug.ValueString()))
+			return approvalPolicyDTO{}, nil, diags
 		}
 		upsertRule, ruleDiags := buildUpsertApprovalRule(ctx, JobApprovalPolicyRuleModel{
 			RequiredApprovals: rule.RequiredApprovals,
@@ -348,21 +427,22 @@ func buildUpsertApprovalPolicyBody(ctx context.Context, plan JobApprovalPolicyRe
 		})
 		diags.Append(ruleDiags...)
 		if diags.HasError() {
-			return sdk.UpsertApprovalPolicyJSONRequestBody{}, diags
+			return approvalPolicyDTO{}, nil, diags
 		}
-		envRules = append(envRules, sdk.UpsertEnvironmentApprovalRule{
-			EnvironmentId: envID,
-			Rule:          upsertRule,
+		envRules = append(envRules, approvalPolicyEnvironmentDTO{
+			Environment:       envName,
+			RequiredApprovals: upsertRule.RequiredApprovals,
+			Approvers:         upsertRule.Approvers,
 		})
 	}
 
-	return sdk.UpsertApprovalPolicyJSONRequestBody{
+	return approvalPolicyDTO{
 		DefaultRule:      defaultRule,
 		EnvironmentRules: envRules,
-	}, diags
+	}, envIDsByName, diags
 }
 
-func buildUpsertApprovalRule(ctx context.Context, rule JobApprovalPolicyRuleModel) (sdk.UpsertApprovalRule, diag.Diagnostics) {
+func buildUpsertApprovalRule(ctx context.Context, rule JobApprovalPolicyRuleModel) (approvalPolicyRuleDTO, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	users, userDiags := terraformListToStringSlice(ctx, rule.Users)
@@ -370,7 +450,7 @@ func buildUpsertApprovalRule(ctx context.Context, rule JobApprovalPolicyRuleMode
 	groups, groupDiags := terraformListToStringSlice(ctx, rule.Groups)
 	diags.Append(groupDiags...)
 	if diags.HasError() {
-		return sdk.UpsertApprovalRule{}, diags
+		return approvalPolicyRuleDTO{}, diags
 	}
 	if users == nil {
 		users = []string{}
@@ -379,16 +459,16 @@ func buildUpsertApprovalRule(ctx context.Context, rule JobApprovalPolicyRuleMode
 		groups = []string{}
 	}
 
-	return sdk.UpsertApprovalRule{
+	return approvalPolicyRuleDTO{
 		RequiredApprovals: int(rule.RequiredApprovals.ValueInt64()),
-		Approvers: sdk.UpsertApprovalApprovers{
+		Approvers: approvalPolicyApproversDTO{
 			Users:  users,
 			Groups: groups,
 		},
 	}, diags
 }
 
-func stateFromApprovalPolicy(ctx context.Context, base JobApprovalPolicyResourceModel, policy sdk.ApprovalPolicy) (JobApprovalPolicyResourceModel, diag.Diagnostics) {
+func stateFromApprovalPolicy(ctx context.Context, base JobApprovalPolicyResourceModel, policy approvalPolicyDTO, envIDsByName map[string]string) (JobApprovalPolicyResourceModel, diag.Diagnostics) {
 	defaultRule, diags := stateFromApprovalRule(ctx, policy.DefaultRule)
 	if diags.HasError() {
 		return JobApprovalPolicyResourceModel{}, diags
@@ -396,13 +476,20 @@ func stateFromApprovalPolicy(ctx context.Context, base JobApprovalPolicyResource
 
 	envRules := make([]JobApprovalPolicyEnvironmentRuleModel, 0, len(policy.EnvironmentRules))
 	for _, rule := range policy.EnvironmentRules {
-		ruleState, ruleDiags := stateFromApprovalRule(ctx, rule.Rule)
+		ruleState, ruleDiags := stateFromApprovalRule(ctx, approvalPolicyRuleDTO{
+			RequiredApprovals: rule.RequiredApprovals,
+			Approvers:         rule.Approvers,
+		})
 		diags.Append(ruleDiags...)
 		if diags.HasError() {
 			return JobApprovalPolicyResourceModel{}, diags
 		}
+		envID := envIDsByName[strings.ToLower(strings.TrimSpace(rule.Environment))]
+		if envID == "" {
+			envID = approvalPolicyEnvironmentIDFromBase(base, rule.Environment)
+		}
 		envRules = append(envRules, JobApprovalPolicyEnvironmentRuleModel{
-			EnvironmentID:     types.StringValue(rule.EnvironmentId.String()),
+			EnvironmentID:     types.StringValue(envID),
 			RequiredApprovals: ruleState.RequiredApprovals,
 			Users:             ruleState.Users,
 			Groups:            ruleState.Groups,
@@ -410,27 +497,22 @@ func stateFromApprovalPolicy(ctx context.Context, base JobApprovalPolicyResource
 	}
 
 	return JobApprovalPolicyResourceModel{
-		ID:               types.StringValue(approvalPolicyID(base.OrgName.ValueString(), base.AppSlug.ValueString(), base.JobSlug.ValueString())),
+		ID:               types.StringValue(approvalPolicyID(base.OrgName.ValueString(), base.AppSlug.ValueString())),
 		OrgName:          base.OrgName,
 		AppSlug:          base.AppSlug,
-		JobSlug:          base.JobSlug,
 		Version:          types.Int64Value(int64(policy.Version)),
 		DefaultRule:      defaultRule,
 		EnvironmentRules: envRules,
 	}, diags
 }
 
-func stateFromApprovalRule(ctx context.Context, rule sdk.ApprovalRule) (JobApprovalPolicyRuleModel, diag.Diagnostics) {
+func stateFromApprovalRule(ctx context.Context, rule approvalPolicyRuleDTO) (JobApprovalPolicyRuleModel, diag.Diagnostics) {
 	users, diags := types.ListValueFrom(ctx, types.StringType, rule.Approvers.Users)
 	if diags.HasError() {
 		return JobApprovalPolicyRuleModel{}, diags
 	}
 
-	groups := make([]string, 0, len(rule.Approvers.Groups))
-	for _, group := range rule.Approvers.Groups {
-		groups = append(groups, group.String())
-	}
-	groupValues, groupDiags := types.ListValueFrom(ctx, types.StringType, groups)
+	groupValues, groupDiags := types.ListValueFrom(ctx, types.StringType, rule.Approvers.Groups)
 	diags.Append(groupDiags...)
 	if diags.HasError() {
 		return JobApprovalPolicyRuleModel{}, diags
@@ -443,8 +525,42 @@ func stateFromApprovalRule(ctx context.Context, rule sdk.ApprovalRule) (JobAppro
 	}, diags
 }
 
-func approvalPolicyID(orgName, appSlug, jobSlug string) string {
-	return strings.Join([]string{orgName, appSlug, jobSlug}, "/")
+func approvalPolicyEnvironmentIDsByName(ctx context.Context, client *sdk.ClientWithResponses, plan JobApprovalPolicyResourceModel) (map[string]string, error) {
+	_, idsByName, err := approvalPolicyEnvironmentNameMaps(ctx, client, plan)
+	return idsByName, err
+}
+
+func approvalPolicyEnvironmentNameMaps(ctx context.Context, client *sdk.ClientWithResponses, plan JobApprovalPolicyResourceModel) (map[string]string, map[string]string, error) {
+	namesByID := map[string]string{}
+	idsByName := map[string]string{}
+
+	rsp, err := client.ListEnvironmentsWithResponse(ctx, plan.OrgName.ValueString(), plan.AppSlug.ValueString())
+	if err != nil {
+		return nil, nil, err
+	}
+	if rsp.JSON404 != nil {
+		return nil, nil, fmt.Errorf("app %q in org %q not found", plan.AppSlug.ValueString(), plan.OrgName.ValueString())
+	}
+	if rsp.JSON200 == nil {
+		return nil, nil, fmt.Errorf("expected 200 response when listing environments for approval policy, got %s", rsp.Status())
+	}
+
+	for _, env := range rsp.JSON200.Data.Items {
+		namesByID[env.Id.String()] = env.Name
+		idsByName[strings.ToLower(strings.TrimSpace(env.Name))] = env.Id.String()
+	}
+	return namesByID, idsByName, nil
+}
+
+func approvalPolicyEnvironmentIDFromBase(base JobApprovalPolicyResourceModel, environmentName string) string {
+	if len(base.EnvironmentRules) == 1 {
+		return base.EnvironmentRules[0].EnvironmentID.ValueString()
+	}
+	return ""
+}
+
+func approvalPolicyID(orgName, appSlug string) string {
+	return strings.Join([]string{orgName, appSlug}, "/")
 }
 
 func jobApprovalPolicyRuleResourceSchema(required bool) schema.SingleNestedAttribute {

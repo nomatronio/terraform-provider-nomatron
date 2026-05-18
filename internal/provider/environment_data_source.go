@@ -24,7 +24,6 @@ func NewEnvironmentDataSource() datasource.DataSource {
 type EnvironmentDataSourceModel struct {
 	OrgName   types.String `tfsdk:"org_name"`
 	AppSlug   types.String `tfsdk:"app_slug"`
-	JobSlug   types.String `tfsdk:"job_slug"`
 	Slug      types.String `tfsdk:"slug"`
 	ID        types.String `tfsdk:"id"`
 	Name      types.String `tfsdk:"name"`
@@ -41,7 +40,7 @@ func (d *EnvironmentDataSource) Metadata(ctx context.Context, req datasource.Met
 
 func (d *EnvironmentDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Fetch a single Nomatron application environment by organization name, application slug, job slug, and exact environment slug.",
+		MarkdownDescription: "Fetch a single Nomatron application environment by organization name, application slug, and exact environment slug.",
 		Attributes: map[string]schema.Attribute{
 			"org_name": schema.StringAttribute{
 				Required:            true,
@@ -50,10 +49,6 @@ func (d *EnvironmentDataSource) Schema(ctx context.Context, req datasource.Schem
 			"app_slug": schema.StringAttribute{
 				Required:            true,
 				MarkdownDescription: "Application slug that owns the environment.",
-			},
-			"job_slug": schema.StringAttribute{
-				Required:            true,
-				MarkdownDescription: "Job slug that owns the environment.",
 			},
 			"slug": schema.StringAttribute{
 				Required:            true,
@@ -107,7 +102,7 @@ func (d *EnvironmentDataSource) Read(ctx context.Context, req datasource.ReadReq
 		return
 	}
 
-	env, err := readEnvironment(ctx, d.client, data.OrgName.ValueString(), data.AppSlug.ValueString(), data.JobSlug.ValueString(), data.Slug.ValueString())
+	env, err := readEnvironment(ctx, d.client, data.OrgName.ValueString(), data.AppSlug.ValueString(), data.Slug.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Failed To Read Environment", err.Error())
 		return
@@ -148,7 +143,6 @@ func flattenEnvironmentDataSource(base EnvironmentDataSourceModel, env sdk.Envir
 	return EnvironmentDataSourceModel{
 		OrgName:   base.OrgName,
 		AppSlug:   base.AppSlug,
-		JobSlug:   base.JobSlug,
 		Slug:      base.Slug,
 		ID:        types.StringValue(env.Id.String()),
 		Name:      types.StringValue(env.Name),

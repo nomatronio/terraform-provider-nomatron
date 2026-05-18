@@ -16,7 +16,6 @@ Nomatron application environment resource.
 resource "nomatron_environment" "example" {
   org_name   = "platform"
   app_slug   = "payments"
-  job_slug   = "web"
   name       = "Production"
   slug       = "prod"
   cluster_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
@@ -32,7 +31,6 @@ resource "nomatron_environment" "example" {
 
 - `app_slug` (String) Application slug that owns the environment.
 - `cluster_id` (String) Nomad cluster ID used by the environment.
-- `job_slug` (String) Job slug that owns the environment.
 - `name` (String) Environment display name.
 - `namespace` (String) Nomad namespace for the environment.
 - `org_name` (String) Organization name that owns the application.

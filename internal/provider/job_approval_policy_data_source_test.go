@@ -31,8 +31,8 @@ func TestJobApprovalPolicyDataSource_Metadata(t *testing.T) {
 
 	ds.Metadata(context.Background(), req, resp)
 
-	if resp.TypeName != "nomatron_job_approval_policy" {
-		t.Fatalf("expected type name %q, got %q", "nomatron_job_approval_policy", resp.TypeName)
+	if resp.TypeName != "nomatron_approval_policy" {
+		t.Fatalf("expected type name %q, got %q", "nomatron_approval_policy", resp.TypeName)
 	}
 }
 
@@ -48,7 +48,6 @@ func TestJobApprovalPolicyDataSource_Schema(t *testing.T) {
 	assertDataSourceStringAttribute(t, attrs, "id", false, false, true)
 	assertDataSourceStringAttribute(t, attrs, "org_name", true, false, false)
 	assertDataSourceStringAttribute(t, attrs, "app_slug", true, false, false)
-	assertDataSourceStringAttribute(t, attrs, "job_slug", true, false, false)
 
 	defaultRule, ok := attrs["default_rule"].(schema.SingleNestedAttribute)
 	if !ok {

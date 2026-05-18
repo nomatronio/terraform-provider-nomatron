@@ -4,12 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/nomatronio/nomatron/pkg/api/sdk"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 func TestNewJobApprovalPolicyResource(t *testing.T) {
@@ -34,8 +31,8 @@ func TestJobApprovalPolicyResource_Metadata(t *testing.T) {
 
 	r.Metadata(context.Background(), req, resp)
 
-	if resp.TypeName != "nomatron_job_approval_policy" {
-		t.Fatalf("expected type name %q, got %q", "nomatron_job_approval_policy", resp.TypeName)
+	if resp.TypeName != "nomatron_approval_policy" {
+		t.Fatalf("expected type name %q, got %q", "nomatron_approval_policy", resp.TypeName)
 	}
 }
 
@@ -51,7 +48,6 @@ func TestJobApprovalPolicyResource_Schema(t *testing.T) {
 	assertResourceStringAttribute(t, attrs, "id", false, false, true, false)
 	assertResourceStringAttribute(t, attrs, "org_name", true, false, false, false)
 	assertResourceStringAttribute(t, attrs, "app_slug", true, false, false, false)
-	assertResourceStringAttribute(t, attrs, "job_slug", true, false, false, false)
 
 	defaultRule, ok := attrs["default_rule"].(schema.SingleNestedAttribute)
 	if !ok {
@@ -81,28 +77,11 @@ func TestBuildUpsertApprovalPolicyBody(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
-	envUsers, diags := types.ListValueFrom(context.Background(), types.StringType, []string{"carol"})
-	if diags.HasError() {
-		t.Fatalf("unexpected diagnostics: %v", diags)
-	}
-	envGroups, diags := types.ListValueFrom(context.Background(), types.StringType, []string{})
-	if diags.HasError() {
-		t.Fatalf("unexpected diagnostics: %v", diags)
-	}
-
-	body, diags := buildUpsertApprovalPolicyBody(context.Background(), JobApprovalPolicyResourceModel{
+	body, _, diags := buildUpsertApprovalPolicyBody(context.Background(), nil, JobApprovalPolicyResourceModel{
 		DefaultRule: JobApprovalPolicyRuleModel{
 			RequiredApprovals: types.Int64Value(2),
 			Users:             users,
 			Groups:            groups,
-		},
-		EnvironmentRules: []JobApprovalPolicyEnvironmentRuleModel{
-			{
-				EnvironmentID:     types.StringValue("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-				RequiredApprovals: types.Int64Value(1),
-				Users:             envUsers,
-				Groups:            envGroups,
-			},
 		},
 	})
 	if diags.HasError() {
@@ -118,54 +97,93 @@ func TestBuildUpsertApprovalPolicyBody(t *testing.T) {
 	if len(body.DefaultRule.Approvers.Groups) != 1 {
 		t.Fatalf("unexpected default groups: %#v", body.DefaultRule.Approvers.Groups)
 	}
+	if len(body.EnvironmentRules) != 0 {
+		t.Fatalf("unexpected environment rule count: %d", len(body.EnvironmentRules))
+	}
+}
+
+func TestBuildUpsertApprovalPolicyBodyResolvesEnvironmentNames(t *testing.T) {
+	t.Parallel()
+
+	users, diags := types.ListValueFrom(context.Background(), types.StringType, []string{})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	groups, diags := types.ListValueFrom(context.Background(), types.StringType, []string{})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	envUsers, diags := types.ListValueFrom(context.Background(), types.StringType, []string{"root"})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+
+	body, envIDsByName, diags := buildUpsertApprovalPolicyBodyWithEnvironmentNames(context.Background(), JobApprovalPolicyResourceModel{
+		OrgName: types.StringValue("platform"),
+		AppSlug: types.StringValue("payments"),
+		DefaultRule: JobApprovalPolicyRuleModel{
+			RequiredApprovals: types.Int64Value(0),
+			Users:             users,
+			Groups:            groups,
+		},
+		EnvironmentRules: []JobApprovalPolicyEnvironmentRuleModel{
+			{
+				EnvironmentID:     types.StringValue("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+				RequiredApprovals: types.Int64Value(1),
+				Users:             envUsers,
+				Groups:            groups,
+			},
+		},
+	}, map[string]string{
+		"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa": "dev",
+	}, map[string]string{
+		"dev": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+	})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
 	if len(body.EnvironmentRules) != 1 {
 		t.Fatalf("unexpected environment rule count: %d", len(body.EnvironmentRules))
 	}
-	if body.EnvironmentRules[0].EnvironmentId.String() != "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" {
-		t.Fatalf("unexpected environment id: %s", body.EnvironmentRules[0].EnvironmentId.String())
+	if body.EnvironmentRules[0].Environment != "dev" {
+		t.Fatalf("unexpected environment name: %q", body.EnvironmentRules[0].Environment)
 	}
-	if body.EnvironmentRules[0].Rule.RequiredApprovals != 1 {
-		t.Fatalf("unexpected environment required approvals: %d", body.EnvironmentRules[0].Rule.RequiredApprovals)
+	if envIDsByName["dev"] != "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" {
+		t.Fatalf("unexpected env id map: %#v", envIDsByName)
 	}
 }
 
 func TestStateFromApprovalPolicy(t *testing.T) {
 	t.Parallel()
 
-	groupID := openapi_types.UUID(uuid.MustParse("11111111-1111-1111-1111-111111111111"))
-	envID := openapi_types.UUID(uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"))
-
 	state, diags := stateFromApprovalPolicy(context.Background(), JobApprovalPolicyResourceModel{
 		OrgName: types.StringValue("platform"),
 		AppSlug: types.StringValue("payments"),
-		JobSlug: types.StringValue("web"),
-	}, sdk.ApprovalPolicy{
+	}, approvalPolicyDTO{
 		Version: 3,
-		DefaultRule: sdk.ApprovalRule{
+		DefaultRule: approvalPolicyRuleDTO{
 			RequiredApprovals: 2,
-			Approvers: sdk.ApprovalApprovers{
+			Approvers: approvalPolicyApproversDTO{
 				Users:  []string{"alice"},
-				Groups: []openapi_types.UUID{groupID},
+				Groups: []string{"11111111-1111-1111-1111-111111111111"},
 			},
 		},
-		EnvironmentRules: []sdk.EnvironmentApprovalRule{
+		EnvironmentRules: []approvalPolicyEnvironmentDTO{
 			{
-				EnvironmentId: envID,
-				Rule: sdk.ApprovalRule{
-					RequiredApprovals: 1,
-					Approvers: sdk.ApprovalApprovers{
-						Users:  []string{"bob"},
-						Groups: []openapi_types.UUID{},
-					},
+				Environment:       "dev",
+				RequiredApprovals: 1,
+				Approvers: approvalPolicyApproversDTO{
+					Users:  []string{"bob"},
+					Groups: []string{},
 				},
 			},
 		},
-	})
+	}, map[string]string{"dev": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"})
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
 
-	if state.ID.ValueString() != "platform/payments/web" {
+	if state.ID.ValueString() != "platform/payments" {
 		t.Fatalf("unexpected id: %q", state.ID.ValueString())
 	}
 	if state.Version.ValueInt64() != 3 {
@@ -185,19 +203,27 @@ func TestStateFromApprovalPolicy(t *testing.T) {
 	if len(state.EnvironmentRules) != 1 {
 		t.Fatalf("unexpected environment rule count: %d", len(state.EnvironmentRules))
 	}
-	if state.EnvironmentRules[0].EnvironmentID.ValueString() != envID.String() {
+	if state.EnvironmentRules[0].EnvironmentID.ValueString() != "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" {
 		t.Fatalf("unexpected environment id: %q", state.EnvironmentRules[0].EnvironmentID.ValueString())
 	}
 }
 
-func TestParseApprovalPolicyImportIDUsesJobImportFormat(t *testing.T) {
+func TestParseApprovalPolicyImportID(t *testing.T) {
 	t.Parallel()
 
-	orgName, appSlug, jobSlug, err := parseJobImportID("platform/payments/web")
+	orgName, appSlug, err := parseApprovalPolicyImportID("platform/payments")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if orgName != "platform" || appSlug != "payments" || jobSlug != "web" {
-		t.Fatalf("unexpected import id parts: %q %q %q", orgName, appSlug, jobSlug)
+	if orgName != "platform" || appSlug != "payments" {
+		t.Fatalf("unexpected import id parts: %q %q", orgName, appSlug)
+	}
+}
+
+func TestParseApprovalPolicyImportID_Invalid(t *testing.T) {
+	t.Parallel()
+
+	if _, _, err := parseApprovalPolicyImportID("platform/payments/web"); err == nil {
+		t.Fatal("expected invalid import id to fail")
 	}
 }

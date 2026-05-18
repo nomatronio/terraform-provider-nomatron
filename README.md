@@ -57,7 +57,7 @@ resource "nomatron_agent" "runner" {
 - `nomatron_group`
 - `nomatron_group_member`
 - `nomatron_job`
-- `nomatron_job_approval_policy`
+- `nomatron_approval_policy`
 - `nomatron_nomad_cluster`
 - `nomatron_organization`
 - `nomatron_organization_github_app_integration`
@@ -80,7 +80,7 @@ Examples live under [examples/resources](/Users/robertbarnes/Developer/terraform
 - `nomatron_group`
 - `nomatron_group_member`
 - `nomatron_job`
-- `nomatron_job_approval_policy`
+- `nomatron_approval_policy`
 - `nomatron_nomad_cluster`
 - `nomatron_organization`
 - `nomatron_organization_github_app_integration`
@@ -151,8 +151,8 @@ Common patterns:
 - Scoped imports:
   - `nomatron_application`: `org_name/app_slug`
   - `nomatron_job`: `org_name/app_slug/job_slug`
-  - `nomatron_job_approval_policy`: `org_name/app_slug/job_slug`
-  - `nomatron_environment`: `org_name/app_slug/job_slug/environment_slug`
+  - `nomatron_approval_policy`: `org_name/app_slug`
+  - `nomatron_environment`: `org_name/app_slug/environment_slug`
   - `nomatron_organization_nomad_cluster`: `org_name/name`
   - `nomatron_organization_github_app_integration`: `org_name/name`
   - `nomatron_variable`:
@@ -166,7 +166,7 @@ Examples:
 ```hcl
 terraform import nomatron_agent.example aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
 terraform import nomatron_application.example platform/payments
-terraform import nomatron_environment.example platform/payments/web/prod
+terraform import nomatron_environment.example platform/payments/prod
 terraform import nomatron_variable.example job/platform/payments/web/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
 ```
 

@@ -24,19 +24,18 @@ type JobApprovalPolicyDataSourceModel struct {
 	ID               types.String                            `tfsdk:"id"`
 	OrgName          types.String                            `tfsdk:"org_name"`
 	AppSlug          types.String                            `tfsdk:"app_slug"`
-	JobSlug          types.String                            `tfsdk:"job_slug"`
 	Version          types.Int64                             `tfsdk:"version"`
 	DefaultRule      JobApprovalPolicyRuleModel              `tfsdk:"default_rule"`
 	EnvironmentRules []JobApprovalPolicyEnvironmentRuleModel `tfsdk:"environment_rules"`
 }
 
 func (d *JobApprovalPolicyDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_job_approval_policy"
+	resp.TypeName = req.ProviderTypeName + "_approval_policy"
 }
 
 func (d *JobApprovalPolicyDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = dschema.Schema{
-		MarkdownDescription: "Fetch a Nomatron job approval policy by organization name, application slug, and job slug.",
+		MarkdownDescription: "Fetch a Nomatron application approval policy by organization name and application slug.",
 		Attributes: map[string]dschema.Attribute{
 			"id": dschema.StringAttribute{
 				Computed:            true,
@@ -48,11 +47,7 @@ func (d *JobApprovalPolicyDataSource) Schema(ctx context.Context, req datasource
 			},
 			"app_slug": dschema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: "Application slug that owns the job.",
-			},
-			"job_slug": dschema.StringAttribute{
-				Required:            true,
-				MarkdownDescription: "Job slug that owns the approval policy.",
+				MarkdownDescription: "Application slug that owns the approval policy.",
 			},
 			"version": dschema.Int64Attribute{
 				Computed:            true,
@@ -83,21 +78,30 @@ func (d *JobApprovalPolicyDataSource) Read(ctx context.Context, req datasource.R
 	}
 
 	if d.client == nil {
-		resp.Diagnostics.AddError("Client Not Configured", "The provider client was not configured for the job approval policy data source.")
+		resp.Diagnostics.AddError("Client Not Configured", "The provider client was not configured for the approval policy data source.")
 		return
 	}
 
-	policy, err := readApprovalPolicy(ctx, d.client, data.OrgName.ValueString(), data.AppSlug.ValueString(), data.JobSlug.ValueString())
-	if err != nil {
-		resp.Diagnostics.AddError("Failed To Read Job Approval Policy", err.Error())
-		return
-	}
-
-	state, diags := stateFromApprovalPolicy(ctx, JobApprovalPolicyResourceModel{
+	base := JobApprovalPolicyResourceModel{
 		OrgName: data.OrgName,
 		AppSlug: data.AppSlug,
-		JobSlug: data.JobSlug,
-	}, policy)
+	}
+	policy, err := readApprovalPolicy(ctx, d.client, data.OrgName.ValueString(), data.AppSlug.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Failed To Read Approval Policy", err.Error())
+		return
+	}
+
+	envIDsByName := map[string]string{}
+	if len(policy.EnvironmentRules) > 0 {
+		envIDsByName, err = approvalPolicyEnvironmentIDsByName(ctx, d.client, base)
+		if err != nil {
+			resp.Diagnostics.AddError("Failed To Read Approval Policy Environments", err.Error())
+			return
+		}
+	}
+
+	state, diags := stateFromApprovalPolicy(ctx, base, policy, envIDsByName)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -107,7 +111,6 @@ func (d *JobApprovalPolicyDataSource) Read(ctx context.Context, req datasource.R
 		ID:               state.ID,
 		OrgName:          state.OrgName,
 		AppSlug:          state.AppSlug,
-		JobSlug:          state.JobSlug,
 		Version:          state.Version,
 		DefaultRule:      state.DefaultRule,
 		EnvironmentRules: state.EnvironmentRules,

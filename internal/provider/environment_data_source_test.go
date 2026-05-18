@@ -52,7 +52,6 @@ func TestEnvironmentDataSource_Schema(t *testing.T) {
 
 	assertEnvironmentDataSourceStringAttribute(t, attrs, "org_name", true, false, false)
 	assertEnvironmentDataSourceStringAttribute(t, attrs, "app_slug", true, false, false)
-	assertEnvironmentDataSourceStringAttribute(t, attrs, "job_slug", true, false, false)
 	assertEnvironmentDataSourceStringAttribute(t, attrs, "slug", true, false, false)
 	assertEnvironmentDataSourceStringAttribute(t, attrs, "id", false, false, true)
 	assertEnvironmentDataSourceStringAttribute(t, attrs, "name", false, false, true)
@@ -127,7 +126,6 @@ func TestFlattenEnvironmentDataSource(t *testing.T) {
 	data := flattenEnvironmentDataSource(EnvironmentDataSourceModel{
 		OrgName: types.StringValue("platform"),
 		AppSlug: types.StringValue("payments"),
-		JobSlug: types.StringValue("web"),
 		Slug:    types.StringValue("prod"),
 	}, sdk.Environment{
 		Id:        envID,
@@ -145,9 +143,6 @@ func TestFlattenEnvironmentDataSource(t *testing.T) {
 	}
 	if data.AppSlug.ValueString() != "payments" {
 		t.Fatalf("unexpected app_slug: %q", data.AppSlug.ValueString())
-	}
-	if data.JobSlug.ValueString() != "web" {
-		t.Fatalf("unexpected job_slug: %q", data.JobSlug.ValueString())
 	}
 	if data.Slug.ValueString() != "prod" {
 		t.Fatalf("unexpected slug: %q", data.Slug.ValueString())
@@ -184,7 +179,6 @@ func TestFlattenEnvironmentDataSource_WithZeroTimes(t *testing.T) {
 	data := flattenEnvironmentDataSource(EnvironmentDataSourceModel{
 		OrgName: types.StringValue("platform"),
 		AppSlug: types.StringValue("payments"),
-		JobSlug: types.StringValue("web"),
 		Slug:    types.StringValue("prod"),
 	}, sdk.Environment{
 		Id:        envID,

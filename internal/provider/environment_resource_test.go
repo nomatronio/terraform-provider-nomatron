@@ -53,7 +53,6 @@ func TestEnvironmentResource_Schema(t *testing.T) {
 
 	assertResourceStringAttribute(t, attrs, "org_name", true, false, false, false)
 	assertResourceStringAttribute(t, attrs, "app_slug", true, false, false, false)
-	assertResourceStringAttribute(t, attrs, "job_slug", true, false, false, false)
 	assertResourceStringAttribute(t, attrs, "id", false, false, true, false)
 	assertResourceStringAttribute(t, attrs, "slug", false, true, true, false)
 	assertResourceStringAttribute(t, attrs, "name", true, false, false, false)
@@ -107,7 +106,6 @@ func TestStateFromEnvironment(t *testing.T) {
 	state := stateFromEnvironment(EnvironmentResourceModel{
 		OrgName: types.StringValue("platform"),
 		AppSlug: types.StringValue("payments"),
-		JobSlug: types.StringValue("web"),
 	}, sdk.Environment{
 		Id:        envID,
 		Slug:      "prod",
@@ -124,9 +122,6 @@ func TestStateFromEnvironment(t *testing.T) {
 	}
 	if state.AppSlug.ValueString() != "payments" {
 		t.Fatalf("unexpected app_slug: %q", state.AppSlug.ValueString())
-	}
-	if state.JobSlug.ValueString() != "web" {
-		t.Fatalf("unexpected job_slug: %q", state.JobSlug.ValueString())
 	}
 	if state.ID.ValueString() != envID.String() {
 		t.Fatalf("unexpected id: %q", state.ID.ValueString())
@@ -157,19 +152,19 @@ func TestStateFromEnvironment(t *testing.T) {
 func TestParseEnvironmentImportID(t *testing.T) {
 	t.Parallel()
 
-	orgName, appSlug, jobSlug, environmentSlug, err := parseEnvironmentImportID("platform/payments/web/prod")
+	orgName, appSlug, environmentSlug, err := parseEnvironmentImportID("platform/payments/prod")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if orgName != "platform" || appSlug != "payments" || jobSlug != "web" || environmentSlug != "prod" {
-		t.Fatalf("unexpected import id parts: %q %q %q %q", orgName, appSlug, jobSlug, environmentSlug)
+	if orgName != "platform" || appSlug != "payments" || environmentSlug != "prod" {
+		t.Fatalf("unexpected import id parts: %q %q %q", orgName, appSlug, environmentSlug)
 	}
 }
 
 func TestParseEnvironmentImportID_Invalid(t *testing.T) {
 	t.Parallel()
 
-	if _, _, _, _, err := parseEnvironmentImportID("platform/payments/web"); err == nil {
+	if _, _, _, err := parseEnvironmentImportID("platform/payments/web/prod"); err == nil {
 		t.Fatal("expected invalid import id to fail")
 	}
 }
@@ -177,7 +172,7 @@ func TestParseEnvironmentImportID_Invalid(t *testing.T) {
 func TestEnvironmentNotFoundError(t *testing.T) {
 	t.Parallel()
 
-	err := &environmentNotFoundError{orgName: "platform", appSlug: "payments", jobSlug: "web", environmentSlug: "prod"}
+	err := &environmentNotFoundError{orgName: "platform", appSlug: "payments", environmentSlug: "prod"}
 	if !isEnvironmentNotFound(err) {
 		t.Fatal("expected environmentNotFoundError to be recognized")
 	}
