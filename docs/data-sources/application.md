@@ -37,8 +37,11 @@ data "nomatron_application" "example" {
 - `git_provider` (String) Git provider for the repository.
 - `id` (String) Application ID.
 - `name` (String) Application display name.
-- `ref` (String) Git ref tracked by the application.
+- `ref` (String) Branch ref tracked when the application uses branch commit triggers.
 - `repo_url` (String) Source repository URL.
+- `tag_pattern` (String) Prefix, suffix, or regular expression used by tag-based triggers.
+- `tag_pattern_type` (String) Tag matching style for tag-based triggers.
+- `trigger_mode` (String) Deployment trigger mode: `branch_commit` or `tag`.
 - `updated_at` (String) Timestamp when the application was last updated.
 - `updated_by` (String) Actor ID that last updated the application, when available.
 - `vcs_github_id` (String) GitHub App integration ID when connected.

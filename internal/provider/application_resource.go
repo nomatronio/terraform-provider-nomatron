@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -31,21 +32,24 @@ func NewApplicationResource() resource.Resource {
 }
 
 type ApplicationResourceModel struct {
-	OrgName     types.String `tfsdk:"org_name"`
-	ID          types.String `tfsdk:"id"`
-	Slug        types.String `tfsdk:"slug"`
-	Name        types.String `tfsdk:"name"`
-	Description types.String `tfsdk:"description"`
-	ClusterID   types.String `tfsdk:"cluster_id"`
-	RepoURL     types.String `tfsdk:"repo_url"`
-	GitProvider types.String `tfsdk:"git_provider"`
-	Ref         types.String `tfsdk:"ref"`
-	AutoPlan    types.Bool   `tfsdk:"auto_plan"`
-	AutoApply   types.Bool   `tfsdk:"auto_apply"`
-	VcsGitHubID types.String `tfsdk:"vcs_github_id"`
-	CreatedAt   types.String `tfsdk:"created_at"`
-	UpdatedAt   types.String `tfsdk:"updated_at"`
-	UpdatedBy   types.String `tfsdk:"updated_by"`
+	OrgName        types.String `tfsdk:"org_name"`
+	ID             types.String `tfsdk:"id"`
+	Slug           types.String `tfsdk:"slug"`
+	Name           types.String `tfsdk:"name"`
+	Description    types.String `tfsdk:"description"`
+	ClusterID      types.String `tfsdk:"cluster_id"`
+	RepoURL        types.String `tfsdk:"repo_url"`
+	GitProvider    types.String `tfsdk:"git_provider"`
+	Ref            types.String `tfsdk:"ref"`
+	TriggerMode    types.String `tfsdk:"trigger_mode"`
+	TagPatternType types.String `tfsdk:"tag_pattern_type"`
+	TagPattern     types.String `tfsdk:"tag_pattern"`
+	AutoPlan       types.Bool   `tfsdk:"auto_plan"`
+	AutoApply      types.Bool   `tfsdk:"auto_apply"`
+	VcsGitHubID    types.String `tfsdk:"vcs_github_id"`
+	CreatedAt      types.String `tfsdk:"created_at"`
+	UpdatedAt      types.String `tfsdk:"updated_at"`
+	UpdatedBy      types.String `tfsdk:"updated_by"`
 }
 
 func (r *ApplicationResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -111,7 +115,31 @@ func (r *ApplicationResource) Schema(ctx context.Context, req resource.SchemaReq
 			"ref": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Git ref to track. Defaults to `main` when omitted.",
+				MarkdownDescription: "Branch ref tracked when `trigger_mode` is `branch_commit`. Defaults to `main` when omitted.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"trigger_mode": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				MarkdownDescription: "Deployment trigger mode. Use `branch_commit` to deploy from branch pushes, or `tag` to deploy from matching Git tags. Defaults to `branch_commit`.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"tag_pattern_type": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				MarkdownDescription: "Tag matching style for tag-based triggers: `semver`, `prefix`, `suffix`, or `custom_regex`.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"tag_pattern": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				MarkdownDescription: "Prefix, suffix, or regular expression used when `trigger_mode` is `tag`. Leave unset for `semver`.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -220,6 +248,10 @@ func (r *ApplicationResource) Create(ctx context.Context, req resource.CreateReq
 	if !plan.Ref.IsNull() && !plan.Ref.IsUnknown() && plan.Ref.ValueString() != "" {
 		ref := plan.Ref.ValueString()
 		body.Ref = &ref
+	}
+	if diags := applyApplicationTriggerCreate(plan, &body); diags != nil {
+		resp.Diagnostics.Append(diags...)
+		return
 	}
 	if !plan.Slug.IsNull() && !plan.Slug.IsUnknown() && plan.Slug.ValueString() != "" {
 		slug := plan.Slug.ValueString()
@@ -345,6 +377,10 @@ func (r *ApplicationResource) Update(ctx context.Context, req resource.UpdateReq
 	if stringValueChanged(plan.Ref, state.Ref) && !plan.Ref.IsNull() && !plan.Ref.IsUnknown() {
 		ref := plan.Ref.ValueString()
 		body.Ref = &ref
+	}
+	if diags := applyApplicationTriggerUpdate(plan, state, &body); diags != nil {
+		resp.Diagnostics.Append(diags...)
+		return
 	}
 	if boolValueChanged(plan.AutoPlan, state.AutoPlan) && !plan.AutoPlan.IsNull() && !plan.AutoPlan.IsUnknown() {
 		autoPlan := plan.AutoPlan.ValueBool()
@@ -512,6 +548,27 @@ func stateFromApplication(base ApplicationResourceModel, app sdk.App) Applicatio
 	if app.Ref != nil {
 		ref = types.StringValue(*app.Ref)
 	}
+	triggerMode := base.TriggerMode
+	if triggerMode.IsUnknown() {
+		triggerMode = types.StringNull()
+	}
+	if app.TriggerMode != nil {
+		triggerMode = types.StringValue(string(*app.TriggerMode))
+	}
+	tagPatternType := base.TagPatternType
+	if tagPatternType.IsUnknown() {
+		tagPatternType = types.StringNull()
+	}
+	if app.TagPatternType != nil {
+		tagPatternType = types.StringValue(string(*app.TagPatternType))
+	}
+	tagPattern := base.TagPattern
+	if tagPattern.IsUnknown() {
+		tagPattern = types.StringNull()
+	}
+	if app.TagPattern != nil {
+		tagPattern = types.StringValue(*app.TagPattern)
+	}
 
 	vcsGitHubID := base.VcsGitHubID
 	if vcsGitHubID.IsUnknown() {
@@ -563,22 +620,67 @@ func stateFromApplication(base ApplicationResourceModel, app sdk.App) Applicatio
 	}
 
 	return ApplicationResourceModel{
-		OrgName:     base.OrgName,
-		ID:          types.StringValue(app.Id.String()),
-		Slug:        types.StringValue(app.Slug),
-		Name:        types.StringValue(app.Name),
-		Description: description,
-		ClusterID:   clusterID,
-		RepoURL:     repoURL,
-		GitProvider: gitProvider,
-		Ref:         ref,
-		AutoPlan:    types.BoolValue(app.AutoPlan),
-		AutoApply:   types.BoolValue(app.AutoApply),
-		VcsGitHubID: vcsGitHubID,
-		CreatedAt:   createdAt,
-		UpdatedAt:   updatedAt,
-		UpdatedBy:   updatedBy,
+		OrgName:        base.OrgName,
+		ID:             types.StringValue(app.Id.String()),
+		Slug:           types.StringValue(app.Slug),
+		Name:           types.StringValue(app.Name),
+		Description:    description,
+		ClusterID:      clusterID,
+		RepoURL:        repoURL,
+		GitProvider:    gitProvider,
+		Ref:            ref,
+		TriggerMode:    triggerMode,
+		TagPatternType: tagPatternType,
+		TagPattern:     tagPattern,
+		AutoPlan:       types.BoolValue(app.AutoPlan),
+		AutoApply:      types.BoolValue(app.AutoApply),
+		VcsGitHubID:    vcsGitHubID,
+		CreatedAt:      createdAt,
+		UpdatedAt:      updatedAt,
+		UpdatedBy:      updatedBy,
 	}
+}
+
+func applyApplicationTriggerCreate(plan ApplicationResourceModel, body *sdk.CreateAppJSONRequestBody) diag.Diagnostics {
+	var diags diag.Diagnostics
+	mode := strings.TrimSpace(plan.TriggerMode.ValueString())
+	if !plan.TriggerMode.IsNull() && !plan.TriggerMode.IsUnknown() && mode != "" {
+		triggerMode := sdk.DeploymentTriggerMode(mode)
+		body.TriggerMode = &triggerMode
+	}
+	if !plan.TagPatternType.IsNull() && !plan.TagPatternType.IsUnknown() && strings.TrimSpace(plan.TagPatternType.ValueString()) != "" {
+		patternType := sdk.TagPatternType(strings.TrimSpace(plan.TagPatternType.ValueString()))
+		body.TagPatternType = &patternType
+	}
+	if !plan.TagPattern.IsNull() && !plan.TagPattern.IsUnknown() && strings.TrimSpace(plan.TagPattern.ValueString()) != "" {
+		pattern := strings.TrimSpace(plan.TagPattern.ValueString())
+		body.TagPattern = &pattern
+	}
+	if mode == string(sdk.Tag) && !plan.Ref.IsNull() && strings.TrimSpace(plan.Ref.ValueString()) != "" && strings.TrimSpace(plan.Ref.ValueString()) != "main" {
+		diags.AddError("Invalid Application Trigger Configuration", "`ref` is only used for branch_commit triggers. Remove `ref` or set `trigger_mode` to `branch_commit`.")
+	}
+	return diags
+}
+
+func applyApplicationTriggerUpdate(plan, state ApplicationResourceModel, body *sdk.UpdateAppJSONRequestBody) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if stringValueChanged(plan.TriggerMode, state.TriggerMode) && !plan.TriggerMode.IsNull() && !plan.TriggerMode.IsUnknown() {
+		triggerMode := sdk.DeploymentTriggerMode(strings.TrimSpace(plan.TriggerMode.ValueString()))
+		body.TriggerMode = &triggerMode
+	}
+	if stringValueChanged(plan.TagPatternType, state.TagPatternType) && !plan.TagPatternType.IsNull() && !plan.TagPatternType.IsUnknown() {
+		patternType := sdk.TagPatternType(strings.TrimSpace(plan.TagPatternType.ValueString()))
+		body.TagPatternType = &patternType
+	}
+	if stringValueChanged(plan.TagPattern, state.TagPattern) && !plan.TagPattern.IsNull() && !plan.TagPattern.IsUnknown() {
+		pattern := strings.TrimSpace(plan.TagPattern.ValueString())
+		body.TagPattern = &pattern
+	}
+	mode := strings.TrimSpace(plan.TriggerMode.ValueString())
+	if mode == string(sdk.Tag) && !plan.Ref.IsNull() && strings.TrimSpace(plan.Ref.ValueString()) != "" && strings.TrimSpace(plan.Ref.ValueString()) != "main" {
+		diags.AddError("Invalid Application Trigger Configuration", "`ref` is only used for branch_commit triggers. Remove `ref` or set `trigger_mode` to `branch_commit`.")
+	}
+	return diags
 }
 
 func parseApplicationID(raw string) (openapi_types.UUID, error) {

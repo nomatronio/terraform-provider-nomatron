@@ -20,9 +20,24 @@ resource "nomatron_application" "example" {
   cluster_id   = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
   repo_url     = "https://github.com/nomatron/payments"
   git_provider = "github"
+  trigger_mode = "branch_commit"
   ref          = "main"
   auto_plan    = true
   auto_apply   = false
+}
+
+resource "nomatron_application" "tagged_release" {
+  org_name         = "platform"
+  name             = "Payments Tagged Release"
+  slug             = "payments-tagged-release"
+  cluster_id       = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+  repo_url         = "https://github.com/nomatron/payments"
+  git_provider     = "github"
+  trigger_mode     = "tag"
+  tag_pattern_type = "prefix"
+  tag_pattern      = "v-"
+  auto_plan        = true
+  auto_apply       = false
 }
 ```
 
@@ -42,8 +57,11 @@ resource "nomatron_application" "example" {
 - `auto_plan` (Boolean) Whether Nomatron automatically plans changes for this application.
 - `description` (String) Application description.
 - `git_provider` (String) Git provider for the repository, such as `github`.
-- `ref` (String) Git ref to track. Defaults to `main` when omitted.
+- `ref` (String) Branch ref tracked when `trigger_mode` is `branch_commit`. Defaults to `main` when omitted.
 - `slug` (String) Stable application slug. If omitted, the server generates one.
+- `tag_pattern` (String) Prefix, suffix, or regular expression used when `trigger_mode` is `tag`. Leave unset for `semver`.
+- `tag_pattern_type` (String) Tag matching style for tag-based triggers: `semver`, `prefix`, `suffix`, or `custom_regex`.
+- `trigger_mode` (String) Deployment trigger mode. Use `branch_commit` to deploy from branch pushes, or `tag` to deploy from matching Git tags. Defaults to `branch_commit`.
 - `vcs_github_id` (String) Optional GitHub App integration ID for repository sync.
 
 ### Read-Only

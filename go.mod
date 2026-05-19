@@ -8,7 +8,7 @@ require (
 	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0
 	github.com/hashicorp/terraform-plugin-go v0.31.0
 	github.com/hashicorp/terraform-plugin-testing v1.15.0
-	github.com/nomatronio/nomatron v0.0.0-20260518234227-d74e6bcadfaf
+	github.com/nomatronio/nomatron v0.0.0-20260519202619-9005ee4368ba
 	github.com/oapi-codegen/runtime v1.3.0
 )
 

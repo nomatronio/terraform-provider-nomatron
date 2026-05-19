@@ -129,17 +129,17 @@ func (a *SpeculativePlanAction) Invoke(ctx context.Context, req action.InvokeReq
 		resp.Diagnostics.AddError("Failed To Trigger Speculative Plan", formatAPIError(rsp.JSON500))
 		return
 	}
-	if rsp.JSON200 == nil {
+	if rsp.JSON202 == nil {
 		resp.Diagnostics.AddError(
 			"Unexpected API Response",
-			fmt.Sprintf("Expected 200 response when creating speculative plan for job %q in app %q in org %q, got %s.", data.JobSlug.ValueString(), data.AppSlug.ValueString(), data.OrgName.ValueString(), rsp.Status()),
+			fmt.Sprintf("Expected 202 response when creating speculative plan for job %q in app %q in org %q, got %s.", data.JobSlug.ValueString(), data.AppSlug.ValueString(), data.OrgName.ValueString(), rsp.Status()),
 		)
 		return
 	}
 
-	message := fmt.Sprintf("Speculative plan %q is %q.", rsp.JSON200.Data.PlanId.String(), rsp.JSON200.Data.Status)
-	if rsp.JSON200.Data.Summary != nil && *rsp.JSON200.Data.Summary != "" {
-		message = fmt.Sprintf("%s Summary: %s", message, *rsp.JSON200.Data.Summary)
+	message := fmt.Sprintf("Speculative plan %q is %q.", rsp.JSON202.Data.PlanId.String(), rsp.JSON202.Data.Status)
+	if rsp.JSON202.Data.Summary != nil && *rsp.JSON202.Data.Summary != "" {
+		message = fmt.Sprintf("%s Summary: %s", message, *rsp.JSON202.Data.Summary)
 	}
 	if resp.SendProgress != nil {
 		resp.SendProgress(action.InvokeProgressEvent{Message: message})

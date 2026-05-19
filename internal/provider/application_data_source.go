@@ -22,21 +22,24 @@ func NewApplicationDataSource() datasource.DataSource {
 }
 
 type ApplicationDataSourceModel struct {
-	OrgName     types.String `tfsdk:"org_name"`
-	Slug        types.String `tfsdk:"slug"`
-	ID          types.String `tfsdk:"id"`
-	Name        types.String `tfsdk:"name"`
-	Description types.String `tfsdk:"description"`
-	ClusterID   types.String `tfsdk:"cluster_id"`
-	RepoURL     types.String `tfsdk:"repo_url"`
-	GitProvider types.String `tfsdk:"git_provider"`
-	Ref         types.String `tfsdk:"ref"`
-	AutoPlan    types.Bool   `tfsdk:"auto_plan"`
-	AutoApply   types.Bool   `tfsdk:"auto_apply"`
-	VcsGitHubID types.String `tfsdk:"vcs_github_id"`
-	CreatedAt   types.String `tfsdk:"created_at"`
-	UpdatedAt   types.String `tfsdk:"updated_at"`
-	UpdatedBy   types.String `tfsdk:"updated_by"`
+	OrgName        types.String `tfsdk:"org_name"`
+	Slug           types.String `tfsdk:"slug"`
+	ID             types.String `tfsdk:"id"`
+	Name           types.String `tfsdk:"name"`
+	Description    types.String `tfsdk:"description"`
+	ClusterID      types.String `tfsdk:"cluster_id"`
+	RepoURL        types.String `tfsdk:"repo_url"`
+	GitProvider    types.String `tfsdk:"git_provider"`
+	Ref            types.String `tfsdk:"ref"`
+	TriggerMode    types.String `tfsdk:"trigger_mode"`
+	TagPatternType types.String `tfsdk:"tag_pattern_type"`
+	TagPattern     types.String `tfsdk:"tag_pattern"`
+	AutoPlan       types.Bool   `tfsdk:"auto_plan"`
+	AutoApply      types.Bool   `tfsdk:"auto_apply"`
+	VcsGitHubID    types.String `tfsdk:"vcs_github_id"`
+	CreatedAt      types.String `tfsdk:"created_at"`
+	UpdatedAt      types.String `tfsdk:"updated_at"`
+	UpdatedBy      types.String `tfsdk:"updated_by"`
 }
 
 func (d *ApplicationDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -81,7 +84,19 @@ func (d *ApplicationDataSource) Schema(ctx context.Context, req datasource.Schem
 			},
 			"ref": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "Git ref tracked by the application.",
+				MarkdownDescription: "Branch ref tracked when the application uses branch commit triggers.",
+			},
+			"trigger_mode": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Deployment trigger mode: `branch_commit` or `tag`.",
+			},
+			"tag_pattern_type": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Tag matching style for tag-based triggers.",
+			},
+			"tag_pattern": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Prefix, suffix, or regular expression used by tag-based triggers.",
 			},
 			"auto_plan": schema.BoolAttribute{
 				Computed:            true,
@@ -164,6 +179,18 @@ func flattenApplicationDataSource(base ApplicationDataSourceModel, app sdk.App) 
 	if app.Ref != nil {
 		ref = types.StringValue(*app.Ref)
 	}
+	triggerMode := types.StringNull()
+	if app.TriggerMode != nil {
+		triggerMode = types.StringValue(string(*app.TriggerMode))
+	}
+	tagPatternType := types.StringNull()
+	if app.TagPatternType != nil {
+		tagPatternType = types.StringValue(string(*app.TagPatternType))
+	}
+	tagPattern := types.StringNull()
+	if app.TagPattern != nil {
+		tagPattern = types.StringValue(*app.TagPattern)
+	}
 
 	vcsGitHubID := types.StringNull()
 	if app.VcsGithubId != nil {
@@ -186,20 +213,23 @@ func flattenApplicationDataSource(base ApplicationDataSourceModel, app sdk.App) 
 	}
 
 	return ApplicationDataSourceModel{
-		OrgName:     base.OrgName,
-		Slug:        base.Slug,
-		ID:          types.StringValue(app.Id.String()),
-		Name:        types.StringValue(app.Name),
-		Description: description,
-		ClusterID:   types.StringValue(app.ClusterId.String()),
-		RepoURL:     types.StringValue(app.RepoUrl),
-		GitProvider: types.StringValue(string(app.GitProvider)),
-		Ref:         ref,
-		AutoPlan:    types.BoolValue(app.AutoPlan),
-		AutoApply:   types.BoolValue(app.AutoApply),
-		VcsGitHubID: vcsGitHubID,
-		CreatedAt:   createdAt,
-		UpdatedAt:   updatedAt,
-		UpdatedBy:   updatedBy,
+		OrgName:        base.OrgName,
+		Slug:           base.Slug,
+		ID:             types.StringValue(app.Id.String()),
+		Name:           types.StringValue(app.Name),
+		Description:    description,
+		ClusterID:      types.StringValue(app.ClusterId.String()),
+		RepoURL:        types.StringValue(app.RepoUrl),
+		GitProvider:    types.StringValue(string(app.GitProvider)),
+		Ref:            ref,
+		TriggerMode:    triggerMode,
+		TagPatternType: tagPatternType,
+		TagPattern:     tagPattern,
+		AutoPlan:       types.BoolValue(app.AutoPlan),
+		AutoApply:      types.BoolValue(app.AutoApply),
+		VcsGitHubID:    vcsGitHubID,
+		CreatedAt:      createdAt,
+		UpdatedAt:      updatedAt,
+		UpdatedBy:      updatedBy,
 	}
 }
