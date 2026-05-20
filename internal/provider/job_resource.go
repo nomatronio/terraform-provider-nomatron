@@ -40,6 +40,8 @@ type JobResourceModel struct {
 	Description      types.String `tfsdk:"description"`
 	ClusterID        types.String `tfsdk:"cluster_id"`
 	DefaultNamespace types.String `tfsdk:"default_namespace"`
+	RepoURL          types.String `tfsdk:"repo_url"`
+	EffectiveRepoURL types.String `tfsdk:"effective_repo_url"`
 	JobspecPath      types.String `tfsdk:"jobspec_path"`
 	JobspecType      types.String `tfsdk:"jobspec_type"`
 	IsPrimary        types.Bool   `tfsdk:"is_primary"`
@@ -105,6 +107,17 @@ func (r *JobResource) Schema(ctx context.Context, req resource.SchemaRequest, re
 				Optional:            true,
 				Computed:            true,
 				MarkdownDescription: "Default Nomad namespace for this job.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"repo_url": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Optional repository URL override for this job. Omit to inherit the application repository.",
+			},
+			"effective_repo_url": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Repository URL Nomatron will use for this job after applying application-level inheritance.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -434,6 +447,10 @@ func buildCreateAppJobBody(plan JobResourceModel) (sdk.CreateAppJobJSONRequestBo
 		defaultNamespace := plan.DefaultNamespace.ValueString()
 		body.DefaultNamespace = &defaultNamespace
 	}
+	if !plan.RepoURL.IsNull() && !plan.RepoURL.IsUnknown() && plan.RepoURL.ValueString() != "" {
+		repoURL := plan.RepoURL.ValueString()
+		body.RepoUrl = &repoURL
+	}
 	if !plan.IsPrimary.IsNull() && !plan.IsPrimary.IsUnknown() && plan.IsPrimary.ValueBool() {
 		priority := primaryJobPriority
 		body.Priority = &priority
@@ -470,6 +487,13 @@ func buildUpdateAppJobBody(plan, state JobResourceModel) (sdk.UpdateAppJobJSONRe
 	if stringValueChanged(plan.DefaultNamespace, state.DefaultNamespace) && !plan.DefaultNamespace.IsNull() && !plan.DefaultNamespace.IsUnknown() {
 		defaultNamespace := plan.DefaultNamespace.ValueString()
 		body.DefaultNamespace = &defaultNamespace
+	}
+	if stringValueChanged(plan.RepoURL, state.RepoURL) {
+		repoURL := ""
+		if !plan.RepoURL.IsNull() && !plan.RepoURL.IsUnknown() {
+			repoURL = plan.RepoURL.ValueString()
+		}
+		body.RepoUrl = &repoURL
 	}
 	if stringValueChanged(plan.JobspecPath, state.JobspecPath) {
 		jobspecPath := plan.JobspecPath.ValueString()
@@ -512,6 +536,21 @@ func stateFromAppJob(base JobResourceModel, job sdk.AppJob) JobResourceModel {
 		defaultNamespace = types.StringValue(job.DefaultNamespace)
 	}
 
+	repoURL := base.RepoURL
+	if repoURL.IsUnknown() {
+		repoURL = types.StringNull()
+	}
+	if job.RepoURL != nil {
+		repoURL = types.StringValue(*job.RepoURL)
+	} else {
+		repoURL = types.StringNull()
+	}
+
+	effectiveRepoURL := types.StringNull()
+	if job.EffectiveRepoURL != "" {
+		effectiveRepoURL = types.StringValue(job.EffectiveRepoURL)
+	}
+
 	createdAt := types.StringNull()
 	if !job.CreatedAt.IsZero() {
 		createdAt = types.StringValue(job.CreatedAt.Format(time.RFC3339))
@@ -531,6 +570,8 @@ func stateFromAppJob(base JobResourceModel, job sdk.AppJob) JobResourceModel {
 		Description:      description,
 		ClusterID:        clusterID,
 		DefaultNamespace: defaultNamespace,
+		RepoURL:          repoURL,
+		EffectiveRepoURL: effectiveRepoURL,
 		JobspecPath:      types.StringValue(job.JobspecPath),
 		JobspecType:      types.StringValue(job.JobspecType),
 		IsPrimary:        types.BoolValue(job.Priority == primaryJobPriority),

@@ -60,6 +60,8 @@ func TestJobDataSource_Schema(t *testing.T) {
 	assertJobDataSourceStringAttribute(t, attrs, "description", false, false, true)
 	assertJobDataSourceStringAttribute(t, attrs, "cluster_id", false, false, true)
 	assertJobDataSourceStringAttribute(t, attrs, "default_namespace", false, false, true)
+	assertJobDataSourceStringAttribute(t, attrs, "repo_url", false, false, true)
+	assertJobDataSourceStringAttribute(t, attrs, "effective_repo_url", false, false, true)
 	assertJobDataSourceStringAttribute(t, attrs, "jobspec_path", false, false, true)
 	assertJobDataSourceStringAttribute(t, attrs, "jobspec_type", false, false, true)
 	assertJobDataSourceBoolAttribute(t, attrs, "is_primary", false, false, true)
@@ -134,6 +136,7 @@ func TestFlattenJobDataSource(t *testing.T) {
 	description := "primary job"
 	createdAt := time.Date(2026, 3, 26, 14, 0, 0, 0, time.UTC)
 	updatedAt := time.Date(2026, 3, 26, 15, 0, 0, 0, time.UTC)
+	repoURL := "https://github.com/acme/web"
 
 	data := flattenJobDataSource(JobDataSourceModel{
 		OrgName: types.StringValue("platform"),
@@ -146,6 +149,8 @@ func TestFlattenJobDataSource(t *testing.T) {
 		Description:      &description,
 		ClusterID:        &clusterID,
 		DefaultNamespace: "payments",
+		RepoURL:          &repoURL,
+		EffectiveRepoURL: repoURL,
 		JobspecPath:      "jobs/web.nomad.hcl",
 		JobspecType:      "hcl",
 		Priority:         primaryJobPriority,
@@ -176,6 +181,12 @@ func TestFlattenJobDataSource(t *testing.T) {
 	}
 	if data.DefaultNamespace.ValueString() != "payments" {
 		t.Fatalf("unexpected default_namespace: %q", data.DefaultNamespace.ValueString())
+	}
+	if data.RepoURL.ValueString() != repoURL {
+		t.Fatalf("unexpected repo_url: %q", data.RepoURL.ValueString())
+	}
+	if data.EffectiveRepoURL.ValueString() != repoURL {
+		t.Fatalf("unexpected effective_repo_url: %q", data.EffectiveRepoURL.ValueString())
 	}
 	if data.JobspecPath.ValueString() != "jobs/web.nomad.hcl" {
 		t.Fatalf("unexpected jobspec_path: %q", data.JobspecPath.ValueString())
@@ -217,6 +228,12 @@ func TestFlattenJobDataSource_WithNullOptionalFields(t *testing.T) {
 	}
 	if !data.ClusterID.IsNull() {
 		t.Fatal("expected cluster_id to be null")
+	}
+	if !data.RepoURL.IsNull() {
+		t.Fatal("expected repo_url to be null")
+	}
+	if !data.EffectiveRepoURL.IsNull() {
+		t.Fatal("expected effective_repo_url to be null")
 	}
 	if !data.DefaultNamespace.IsNull() {
 		t.Fatal("expected default_namespace to be null")

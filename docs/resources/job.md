@@ -20,6 +20,7 @@ resource "nomatron_job" "example" {
   slug              = "web"
   jobspec_path      = "jobs/web.nomad.hcl"
   jobspec_type      = "hcl"
+  repo_url          = "https://github.com/acme/payments-web"
   default_namespace = "payments"
   is_primary        = true
 }
@@ -42,10 +43,12 @@ resource "nomatron_job" "example" {
 - `default_namespace` (String) Default Nomad namespace for this job.
 - `description` (String) Job description.
 - `is_primary` (Boolean) Whether this is the primary job for the application.
+- `repo_url` (String) Optional repository URL override for this job. Omit to inherit the application repository.
 - `slug` (String) Stable job slug. If omitted, the server generates one.
 
 ### Read-Only
 
 - `created_at` (String) Timestamp when the job was created.
+- `effective_repo_url` (String) Repository URL Nomatron will use for this job after applying application-level inheritance.
 - `id` (String) Job ID.
 - `updated_at` (String) Timestamp when the job was last updated.

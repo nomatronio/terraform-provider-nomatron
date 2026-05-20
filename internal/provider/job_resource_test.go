@@ -58,6 +58,8 @@ func TestJobResource_Schema(t *testing.T) {
 	assertResourceStringAttribute(t, attrs, "description", false, true, false, false)
 	assertResourceStringAttribute(t, attrs, "cluster_id", false, true, true, false)
 	assertResourceStringAttribute(t, attrs, "default_namespace", false, true, true, false)
+	assertResourceStringAttribute(t, attrs, "repo_url", false, true, false, false)
+	assertResourceStringAttribute(t, attrs, "effective_repo_url", false, false, true, false)
 	assertResourceStringAttribute(t, attrs, "jobspec_path", true, false, false, false)
 	assertResourceStringAttribute(t, attrs, "jobspec_type", true, false, false, false)
 	assertResourceBoolAttribute(t, attrs, "is_primary", false, true, true)
@@ -105,6 +107,7 @@ func TestStateFromAppJob(t *testing.T) {
 	description := "primary job"
 	createdAt := time.Date(2026, 3, 26, 14, 0, 0, 0, time.UTC)
 	updatedAt := time.Date(2026, 3, 26, 15, 0, 0, 0, time.UTC)
+	repoURL := "https://github.com/acme/web"
 
 	state := stateFromAppJob(JobResourceModel{
 		OrgName: types.StringValue("platform"),
@@ -116,6 +119,8 @@ func TestStateFromAppJob(t *testing.T) {
 		Description:      &description,
 		ClusterID:        &clusterID,
 		DefaultNamespace: "payments",
+		RepoURL:          &repoURL,
+		EffectiveRepoURL: repoURL,
 		JobspecPath:      "jobs/web.nomad.hcl",
 		JobspecType:      "hcl",
 		Priority:         primaryJobPriority,
@@ -146,6 +151,12 @@ func TestStateFromAppJob(t *testing.T) {
 	}
 	if state.DefaultNamespace.ValueString() != "payments" {
 		t.Fatalf("unexpected default_namespace: %q", state.DefaultNamespace.ValueString())
+	}
+	if state.RepoURL.ValueString() != repoURL {
+		t.Fatalf("unexpected repo_url: %q", state.RepoURL.ValueString())
+	}
+	if state.EffectiveRepoURL.ValueString() != repoURL {
+		t.Fatalf("unexpected effective_repo_url: %q", state.EffectiveRepoURL.ValueString())
 	}
 	if state.JobspecPath.ValueString() != "jobs/web.nomad.hcl" {
 		t.Fatalf("unexpected jobspec_path: %q", state.JobspecPath.ValueString())
@@ -190,8 +201,60 @@ func TestStateFromAppJob_WithNullOptionalFields(t *testing.T) {
 	if !state.ClusterID.IsNull() {
 		t.Fatal("expected cluster_id to be null")
 	}
+	if !state.RepoURL.IsNull() {
+		t.Fatal("expected repo_url to be null")
+	}
+	if !state.EffectiveRepoURL.IsNull() {
+		t.Fatal("expected effective_repo_url to be null")
+	}
 	if state.DefaultNamespace.ValueString() != "payments" {
 		t.Fatalf("expected default_namespace to preserve base state, got %q", state.DefaultNamespace.ValueString())
+	}
+}
+
+func TestBuildCreateAppJobBody_IncludesRepoOverride(t *testing.T) {
+	t.Parallel()
+
+	body, diags := buildCreateAppJobBody(JobResourceModel{
+		Name:             types.StringValue("Web"),
+		JobspecPath:      types.StringValue("jobs/web.nomad.hcl"),
+		JobspecType:      types.StringValue("hcl"),
+		DefaultNamespace: types.StringValue("payments"),
+		RepoURL:          types.StringValue("https://github.com/acme/web"),
+	})
+	if diags.HasError() {
+		t.Fatalf("expected no diagnostics, got %v", diags)
+	}
+	if body.RepoUrl == nil || *body.RepoUrl != "https://github.com/acme/web" {
+		t.Fatalf("RepoUrl = %#v, want override URL", body.RepoUrl)
+	}
+}
+
+func TestBuildUpdateAppJobBody_ClearsRepoOverride(t *testing.T) {
+	t.Parallel()
+
+	body, diags := buildUpdateAppJobBody(
+		JobResourceModel{
+			Name:        types.StringValue("Web"),
+			JobspecPath: types.StringValue("jobs/web.nomad.hcl"),
+			JobspecType: types.StringValue("hcl"),
+			RepoURL:     types.StringNull(),
+		},
+		JobResourceModel{
+			Name:        types.StringValue("Web"),
+			JobspecPath: types.StringValue("jobs/web.nomad.hcl"),
+			JobspecType: types.StringValue("hcl"),
+			RepoURL:     types.StringValue("https://github.com/acme/web"),
+		},
+	)
+	if diags.HasError() {
+		t.Fatalf("expected no diagnostics, got %v", diags)
+	}
+	if body.RepoUrl == nil {
+		t.Fatal("expected RepoUrl to be set for clear")
+	}
+	if *body.RepoUrl != "" {
+		t.Fatalf("RepoUrl = %q, want empty string clear marker", *body.RepoUrl)
 	}
 }
 
