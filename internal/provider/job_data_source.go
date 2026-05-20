@@ -30,6 +30,8 @@ type JobDataSourceModel struct {
 	Description      types.String `tfsdk:"description"`
 	ClusterID        types.String `tfsdk:"cluster_id"`
 	DefaultNamespace types.String `tfsdk:"default_namespace"`
+	RepoURL          types.String `tfsdk:"repo_url"`
+	EffectiveRepoURL types.String `tfsdk:"effective_repo_url"`
 	JobspecPath      types.String `tfsdk:"jobspec_path"`
 	JobspecType      types.String `tfsdk:"jobspec_type"`
 	IsPrimary        types.Bool   `tfsdk:"is_primary"`
@@ -76,6 +78,14 @@ func (d *JobDataSource) Schema(ctx context.Context, req datasource.SchemaRequest
 			"default_namespace": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "Default Nomad namespace for this job.",
+			},
+			"repo_url": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Job-level repository override. Null means the job inherits the application repository.",
+			},
+			"effective_repo_url": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Repository URL Nomatron will use for this job after applying application-level inheritance.",
 			},
 			"jobspec_path": schema.StringAttribute{
 				Computed:            true,
@@ -160,6 +170,16 @@ func flattenJobDataSource(base JobDataSourceModel, job sdk.AppJob) JobDataSource
 		defaultNamespace = types.StringValue(job.DefaultNamespace)
 	}
 
+	repoURL := types.StringNull()
+	if job.RepoURL != nil {
+		repoURL = types.StringValue(*job.RepoURL)
+	}
+
+	effectiveRepoURL := types.StringNull()
+	if job.EffectiveRepoURL != "" {
+		effectiveRepoURL = types.StringValue(job.EffectiveRepoURL)
+	}
+
 	createdAt := types.StringNull()
 	if !job.CreatedAt.IsZero() {
 		createdAt = types.StringValue(job.CreatedAt.Format(time.RFC3339))
@@ -179,6 +199,8 @@ func flattenJobDataSource(base JobDataSourceModel, job sdk.AppJob) JobDataSource
 		Description:      description,
 		ClusterID:        clusterID,
 		DefaultNamespace: defaultNamespace,
+		RepoURL:          repoURL,
+		EffectiveRepoURL: effectiveRepoURL,
 		JobspecPath:      types.StringValue(job.JobspecPath),
 		JobspecType:      types.StringValue(job.JobspecType),
 		IsPrimary:        types.BoolValue(job.Priority == primaryJobPriority),
