@@ -62,7 +62,8 @@ func TestJobResource_Schema(t *testing.T) {
 	assertResourceStringAttribute(t, attrs, "effective_repo_url", false, false, true, false)
 	assertResourceStringAttribute(t, attrs, "jobspec_path", true, false, false, false)
 	assertResourceStringAttribute(t, attrs, "jobspec_type", true, false, false, false)
-	assertResourceBoolAttribute(t, attrs, "is_primary", false, true, true)
+	assertResourceBoolAttribute(t, attrs, "is_primary", false, false, true)
+	assertResourceInt64Attribute(t, attrs, "priority", false, true, true)
 	assertResourceStringAttribute(t, attrs, "created_at", false, false, true, false)
 	assertResourceStringAttribute(t, attrs, "updated_at", false, false, true, false)
 }
@@ -167,6 +168,9 @@ func TestStateFromAppJob(t *testing.T) {
 	if !state.IsPrimary.ValueBool() {
 		t.Fatal("expected is_primary=true")
 	}
+	if state.Priority.ValueInt64() != int64(primaryJobPriority) {
+		t.Fatalf("unexpected priority: %d", state.Priority.ValueInt64())
+	}
 	if state.CreatedAt.ValueString() != createdAt.Format(time.RFC3339) {
 		t.Fatalf("unexpected created_at: %q", state.CreatedAt.ValueString())
 	}
@@ -209,6 +213,45 @@ func TestStateFromAppJob_WithNullOptionalFields(t *testing.T) {
 	}
 	if state.DefaultNamespace.ValueString() != "payments" {
 		t.Fatalf("expected default_namespace to preserve base state, got %q", state.DefaultNamespace.ValueString())
+	}
+	if state.IsPrimary.ValueBool() {
+		t.Fatal("expected is_primary=false")
+	}
+	if state.Priority.ValueInt64() != int64(primaryJobPriority*2) {
+		t.Fatalf("unexpected priority: %d", state.Priority.ValueInt64())
+	}
+}
+
+func TestBuildCreateAppJobBodyIncludesDeploymentGroupPriority(t *testing.T) {
+	t.Parallel()
+
+	body, diags := buildCreateAppJobBody(JobResourceModel{
+		Name:        types.StringValue("Web"),
+		JobspecPath: types.StringValue("jobs/web.nomad.hcl"),
+		JobspecType: types.StringValue("NOMAD"),
+		Priority:    types.Int64Value(2),
+	})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if body.Priority == nil || *body.Priority != 2 {
+		t.Fatalf("priority = %v, want 2", body.Priority)
+	}
+}
+
+func TestBuildUpdateAppJobBodyIncludesChangedDeploymentGroupPriority(t *testing.T) {
+	t.Parallel()
+
+	body, diags := buildUpdateAppJobBody(JobResourceModel{
+		Priority: types.Int64Value(2),
+	}, JobResourceModel{
+		Priority: types.Int64Value(1),
+	})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if body.Priority == nil || *body.Priority != 2 {
+		t.Fatalf("priority = %v, want 2", body.Priority)
 	}
 }
 

@@ -41,9 +41,10 @@ output "job_repository" {
 - `description` (String) Job description.
 - `effective_repo_url` (String) Repository URL Nomatron will use for this job after applying application-level inheritance.
 - `id` (String) Job ID.
-- `is_primary` (Boolean) Whether this is the primary job for the application.
+- `is_primary` (Boolean) Whether this job is in the first deployment group.
 - `jobspec_path` (String) Path to the job spec within the repository.
 - `jobspec_type` (String) Job spec source type.
 - `name` (String) Job display name.
+- `priority` (Number) Deployment group priority. Jobs with the same priority deploy together.
 - `repo_url` (String) Job-level repository override. Null means the job inherits the application repository.
 - `updated_at` (String) Timestamp when the job was last updated.

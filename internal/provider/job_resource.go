@@ -45,6 +45,7 @@ type JobResourceModel struct {
 	JobspecPath      types.String `tfsdk:"jobspec_path"`
 	JobspecType      types.String `tfsdk:"jobspec_type"`
 	IsPrimary        types.Bool   `tfsdk:"is_primary"`
+	Priority         types.Int64  `tfsdk:"priority"`
 	CreatedAt        types.String `tfsdk:"created_at"`
 	UpdatedAt        types.String `tfsdk:"updated_at"`
 }
@@ -131,12 +132,16 @@ func (r *JobResource) Schema(ctx context.Context, req resource.SchemaRequest, re
 				MarkdownDescription: "Job spec source type.",
 			},
 			"is_primary": schema.BoolAttribute{
-				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Whether this is the primary job for the application.",
+				MarkdownDescription: "Whether this job is in the first deployment group.",
 				PlanModifiers: []planmodifier.Bool{
 					boolplanmodifier.UseStateForUnknown(),
 				},
+			},
+			"priority": schema.Int64Attribute{
+				Optional:            true,
+				Computed:            true,
+				MarkdownDescription: "Deployment group priority. Jobs with the same priority deploy together.",
 			},
 			"created_at": schema.StringAttribute{
 				Computed:            true,
@@ -451,8 +456,8 @@ func buildCreateAppJobBody(plan JobResourceModel) (sdk.CreateAppJobJSONRequestBo
 		repoURL := plan.RepoURL.ValueString()
 		body.RepoUrl = &repoURL
 	}
-	if !plan.IsPrimary.IsNull() && !plan.IsPrimary.IsUnknown() && plan.IsPrimary.ValueBool() {
-		priority := primaryJobPriority
+	if !plan.Priority.IsNull() && !plan.Priority.IsUnknown() {
+		priority := int(plan.Priority.ValueInt64())
 		body.Priority = &priority
 	}
 	if !plan.Slug.IsNull() && !plan.Slug.IsUnknown() && plan.Slug.ValueString() != "" {
@@ -503,8 +508,8 @@ func buildUpdateAppJobBody(plan, state JobResourceModel) (sdk.UpdateAppJobJSONRe
 		jobspecType := sdk.UpdateAppJobRequestJobspecType(plan.JobspecType.ValueString())
 		body.JobspecType = &jobspecType
 	}
-	if boolValueChanged(plan.IsPrimary, state.IsPrimary) && !plan.IsPrimary.IsNull() && !plan.IsPrimary.IsUnknown() && plan.IsPrimary.ValueBool() {
-		priority := primaryJobPriority
+	if int64ValueChanged(plan.Priority, state.Priority) && !plan.Priority.IsNull() && !plan.Priority.IsUnknown() {
+		priority := int(plan.Priority.ValueInt64())
 		body.Priority = &priority
 	}
 
@@ -575,6 +580,7 @@ func stateFromAppJob(base JobResourceModel, job sdk.AppJob) JobResourceModel {
 		JobspecPath:      types.StringValue(job.JobspecPath),
 		JobspecType:      types.StringValue(job.JobspecType),
 		IsPrimary:        types.BoolValue(job.Priority == primaryJobPriority),
+		Priority:         types.Int64Value(int64(job.Priority)),
 		CreatedAt:        createdAt,
 		UpdatedAt:        updatedAt,
 	}

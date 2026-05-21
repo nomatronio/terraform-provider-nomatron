@@ -65,6 +65,7 @@ func TestJobDataSource_Schema(t *testing.T) {
 	assertJobDataSourceStringAttribute(t, attrs, "jobspec_path", false, false, true)
 	assertJobDataSourceStringAttribute(t, attrs, "jobspec_type", false, false, true)
 	assertJobDataSourceBoolAttribute(t, attrs, "is_primary", false, false, true)
+	assertJobDataSourceInt64Attribute(t, attrs, "priority", false, false, true)
 	assertJobDataSourceStringAttribute(t, attrs, "created_at", false, false, true)
 	assertJobDataSourceStringAttribute(t, attrs, "updated_at", false, false, true)
 }
@@ -197,6 +198,9 @@ func TestFlattenJobDataSource(t *testing.T) {
 	if !data.IsPrimary.ValueBool() {
 		t.Fatal("expected is_primary=true")
 	}
+	if data.Priority.ValueInt64() != int64(primaryJobPriority) {
+		t.Fatalf("unexpected priority: %d", data.Priority.ValueInt64())
+	}
 	if data.CreatedAt.ValueString() != createdAt.Format(time.RFC3339) {
 		t.Fatalf("unexpected created_at: %q", data.CreatedAt.ValueString())
 	}
@@ -243,6 +247,12 @@ func TestFlattenJobDataSource_WithNullOptionalFields(t *testing.T) {
 	}
 	if !data.UpdatedAt.IsNull() {
 		t.Fatal("expected updated_at to be null")
+	}
+	if data.IsPrimary.ValueBool() {
+		t.Fatal("expected is_primary=false")
+	}
+	if data.Priority.ValueInt64() != int64(primaryJobPriority*2) {
+		t.Fatalf("unexpected priority: %d", data.Priority.ValueInt64())
 	}
 }
 
@@ -291,5 +301,29 @@ func assertJobDataSourceBoolAttribute(t *testing.T, attrs map[string]schema.Attr
 	}
 	if boolAttr.Computed != computed {
 		t.Fatalf("expected attribute %q computed=%t, got %t", name, computed, boolAttr.Computed)
+	}
+}
+
+func assertJobDataSourceInt64Attribute(t *testing.T, attrs map[string]schema.Attribute, name string, required, optional, computed bool) {
+	t.Helper()
+
+	attr, ok := attrs[name]
+	if !ok {
+		t.Fatalf("expected attribute %q to exist", name)
+	}
+
+	intAttr, ok := attr.(schema.Int64Attribute)
+	if !ok {
+		t.Fatalf("expected attribute %q to be schema.Int64Attribute, got %T", name, attr)
+	}
+
+	if intAttr.Required != required {
+		t.Fatalf("expected attribute %q required=%t, got %t", name, required, intAttr.Required)
+	}
+	if intAttr.Optional != optional {
+		t.Fatalf("expected attribute %q optional=%t, got %t", name, optional, intAttr.Optional)
+	}
+	if intAttr.Computed != computed {
+		t.Fatalf("expected attribute %q computed=%t, got %t", name, computed, intAttr.Computed)
 	}
 }

@@ -125,3 +125,24 @@ func assertActionStringAttribute(t *testing.T, attrs map[string]actionschema.Att
 		t.Fatalf("expected attribute %q optional=%t, got %t", name, optional, stringAttr.Optional)
 	}
 }
+
+func assertActionBoolAttribute(t *testing.T, attrs map[string]actionschema.Attribute, name string, required, optional bool) {
+	t.Helper()
+
+	attr, ok := attrs[name]
+	if !ok {
+		t.Fatalf("expected attribute %q to exist", name)
+	}
+
+	boolAttr, ok := attr.(actionschema.BoolAttribute)
+	if !ok {
+		t.Fatalf("expected attribute %q to be action schema.BoolAttribute, got %T", name, attr)
+	}
+
+	if boolAttr.Required != required {
+		t.Fatalf("expected attribute %q required=%t, got %t", name, required, boolAttr.Required)
+	}
+	if boolAttr.Optional != optional {
+		t.Fatalf("expected attribute %q optional=%t, got %t", name, optional, boolAttr.Optional)
+	}
+}

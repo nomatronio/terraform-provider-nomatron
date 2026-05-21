@@ -430,26 +430,44 @@ func TestNomatronProvider_Actions(t *testing.T) {
 
 	actions := p.Actions(context.Background())
 
-	if len(actions) != 2 {
-		t.Fatalf("expected 2 actions, got %d", len(actions))
+	if len(actions) != 4 {
+		t.Fatalf("expected 4 actions, got %d", len(actions))
 	}
 
-	importNomadJobAction := actions[0]()
-	if importNomadJobAction == nil {
+	destroyAppJobsAction := actions[0]()
+	if destroyAppJobsAction == nil {
 		t.Fatal("expected first action factory to return a non-nil action")
 	}
 
-	if _, ok := importNomadJobAction.(*ImportNomadJobAction); !ok {
-		t.Fatalf("expected first action to be *ImportNomadJobAction, got %T", importNomadJobAction)
+	if _, ok := destroyAppJobsAction.(*DestroyAppJobsAction); !ok {
+		t.Fatalf("expected first action to be *DestroyAppJobsAction, got %T", destroyAppJobsAction)
 	}
 
-	speculativePlanAction := actions[1]()
-	if speculativePlanAction == nil {
+	destroyJobAction := actions[1]()
+	if destroyJobAction == nil {
 		t.Fatal("expected second action factory to return a non-nil action")
 	}
 
+	if _, ok := destroyJobAction.(*DestroyJobAction); !ok {
+		t.Fatalf("expected second action to be *DestroyJobAction, got %T", destroyJobAction)
+	}
+
+	importNomadJobAction := actions[2]()
+	if importNomadJobAction == nil {
+		t.Fatal("expected third action factory to return a non-nil action")
+	}
+
+	if _, ok := importNomadJobAction.(*ImportNomadJobAction); !ok {
+		t.Fatalf("expected third action to be *ImportNomadJobAction, got %T", importNomadJobAction)
+	}
+
+	speculativePlanAction := actions[3]()
+	if speculativePlanAction == nil {
+		t.Fatal("expected fourth action factory to return a non-nil action")
+	}
+
 	if _, ok := speculativePlanAction.(*SpeculativePlanAction); !ok {
-		t.Fatalf("expected second action to be *SpeculativePlanAction, got %T", speculativePlanAction)
+		t.Fatalf("expected fourth action to be *SpeculativePlanAction, got %T", speculativePlanAction)
 	}
 }
 

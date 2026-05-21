@@ -7,5 +7,5 @@ resource "nomatron_job" "example" {
   jobspec_type      = "hcl"
   repo_url          = "https://github.com/acme/payments-web"
   default_namespace = "payments"
-  is_primary        = true
+  priority          = 1
 }

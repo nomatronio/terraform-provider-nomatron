@@ -22,7 +22,7 @@ resource "nomatron_job" "example" {
   jobspec_type      = "hcl"
   repo_url          = "https://github.com/acme/payments-web"
   default_namespace = "payments"
-  is_primary        = true
+  priority          = 1
 }
 ```
 
@@ -42,7 +42,7 @@ resource "nomatron_job" "example" {
 - `cluster_id` (String) Optional cluster override for this job.
 - `default_namespace` (String) Default Nomad namespace for this job.
 - `description` (String) Job description.
-- `is_primary` (Boolean) Whether this is the primary job for the application.
+- `priority` (Number) Deployment group priority. Jobs with the same priority deploy together.
 - `repo_url` (String) Optional repository URL override for this job. Omit to inherit the application repository.
 - `slug` (String) Stable job slug. If omitted, the server generates one.
 
@@ -51,4 +51,5 @@ resource "nomatron_job" "example" {
 - `created_at` (String) Timestamp when the job was created.
 - `effective_repo_url` (String) Repository URL Nomatron will use for this job after applying application-level inheritance.
 - `id` (String) Job ID.
+- `is_primary` (Boolean) Whether this job is in the first deployment group.
 - `updated_at` (String) Timestamp when the job was last updated.

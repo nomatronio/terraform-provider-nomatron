@@ -168,6 +168,8 @@ func (p *NomatronProvider) EphemeralResources(ctx context.Context) []func() ephe
 
 func (p *NomatronProvider) Actions(ctx context.Context) []func() action.Action {
 	return []func() action.Action{
+		NewDestroyAppJobsAction,
+		NewDestroyJobAction,
 		NewImportNomadJobAction,
 		NewSpeculativePlanAction,
 	}

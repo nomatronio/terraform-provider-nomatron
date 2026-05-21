@@ -35,6 +35,7 @@ type JobDataSourceModel struct {
 	JobspecPath      types.String `tfsdk:"jobspec_path"`
 	JobspecType      types.String `tfsdk:"jobspec_type"`
 	IsPrimary        types.Bool   `tfsdk:"is_primary"`
+	Priority         types.Int64  `tfsdk:"priority"`
 	CreatedAt        types.String `tfsdk:"created_at"`
 	UpdatedAt        types.String `tfsdk:"updated_at"`
 }
@@ -97,7 +98,11 @@ func (d *JobDataSource) Schema(ctx context.Context, req datasource.SchemaRequest
 			},
 			"is_primary": schema.BoolAttribute{
 				Computed:            true,
-				MarkdownDescription: "Whether this is the primary job for the application.",
+				MarkdownDescription: "Whether this job is in the first deployment group.",
+			},
+			"priority": schema.Int64Attribute{
+				Computed:            true,
+				MarkdownDescription: "Deployment group priority. Jobs with the same priority deploy together.",
 			},
 			"created_at": schema.StringAttribute{
 				Computed:            true,
@@ -204,6 +209,7 @@ func flattenJobDataSource(base JobDataSourceModel, job sdk.AppJob) JobDataSource
 		JobspecPath:      types.StringValue(job.JobspecPath),
 		JobspecType:      types.StringValue(job.JobspecType),
 		IsPrimary:        types.BoolValue(job.Priority == primaryJobPriority),
+		Priority:         types.Int64Value(int64(job.Priority)),
 		CreatedAt:        createdAt,
 		UpdatedAt:        updatedAt,
 	}
