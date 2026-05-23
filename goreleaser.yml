@@ -46,5 +46,10 @@ signs:
       - "--detach-sign"
       - "${artifact}"
 
+release:
+  extra_files:
+    - glob: terraform-registry-manifest.json
+      name_template: "{{ .ProjectName }}_{{ .Version }}_manifest.json"
+
 changelog:
   use: git
