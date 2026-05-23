@@ -60,8 +60,12 @@ func TestJobResource_Schema(t *testing.T) {
 	assertResourceStringAttribute(t, attrs, "default_namespace", false, true, true, false)
 	assertResourceStringAttribute(t, attrs, "repo_url", false, true, false, false)
 	assertResourceStringAttribute(t, attrs, "effective_repo_url", false, false, true, false)
-	assertResourceStringAttribute(t, attrs, "jobspec_path", true, false, false, false)
+	assertResourceStringAttribute(t, attrs, "jobspec_path", false, true, true, false)
 	assertResourceStringAttribute(t, attrs, "jobspec_type", true, false, false, false)
+	assertResourceStringAttribute(t, attrs, "source_mode", false, true, true, false)
+	assertResourceStringAttribute(t, attrs, "source_directory", false, true, true, false)
+	assertResourceStringAttribute(t, attrs, "job_file_path", false, true, true, false)
+	assertResourceListAttribute(t, attrs, "job_var_file_paths", false, true, true)
 	assertResourceBoolAttribute(t, attrs, "is_primary", false, false, true)
 	assertResourceInt64Attribute(t, attrs, "priority", false, true, true)
 	assertResourceStringAttribute(t, attrs, "created_at", false, false, true, false)
@@ -124,6 +128,7 @@ func TestStateFromAppJob(t *testing.T) {
 		EffectiveRepoURL: repoURL,
 		JobspecPath:      "jobs/web.nomad.hcl",
 		JobspecType:      "hcl",
+		SourceMode:       sdk.AppJobSourceModeFile,
 		Priority:         primaryJobPriority,
 		CreatedAt:        createdAt,
 		UpdatedAt:        updatedAt,
@@ -165,6 +170,9 @@ func TestStateFromAppJob(t *testing.T) {
 	if state.JobspecType.ValueString() != "hcl" {
 		t.Fatalf("unexpected jobspec_type: %q", state.JobspecType.ValueString())
 	}
+	if state.SourceMode.ValueString() != "file" {
+		t.Fatalf("unexpected source_mode: %q", state.SourceMode.ValueString())
+	}
 	if !state.IsPrimary.ValueBool() {
 		t.Fatal("expected is_primary=true")
 	}
@@ -196,6 +204,7 @@ func TestStateFromAppJob_WithNullOptionalFields(t *testing.T) {
 		Name:        "Web",
 		JobspecPath: "jobs/web.nomad.hcl",
 		JobspecType: "hcl",
+		SourceMode:  sdk.AppJobSourceModeFile,
 		Priority:    primaryJobPriority * 2,
 	})
 
@@ -211,6 +220,18 @@ func TestStateFromAppJob_WithNullOptionalFields(t *testing.T) {
 	if !state.EffectiveRepoURL.IsNull() {
 		t.Fatal("expected effective_repo_url to be null")
 	}
+	if state.SourceMode.ValueString() != "file" {
+		t.Fatalf("unexpected source_mode: %q", state.SourceMode.ValueString())
+	}
+	if !state.SourceDirectory.IsNull() {
+		t.Fatal("expected source_directory to be null")
+	}
+	if !state.JobFilePath.IsNull() {
+		t.Fatal("expected job_file_path to be null")
+	}
+	if !state.JobVarFilePaths.IsNull() {
+		t.Fatal("expected job_var_file_paths to be null")
+	}
 	if state.DefaultNamespace.ValueString() != "payments" {
 		t.Fatalf("expected default_namespace to preserve base state, got %q", state.DefaultNamespace.ValueString())
 	}
@@ -219,6 +240,52 @@ func TestStateFromAppJob_WithNullOptionalFields(t *testing.T) {
 	}
 	if state.Priority.ValueInt64() != int64(primaryJobPriority*2) {
 		t.Fatalf("unexpected priority: %d", state.Priority.ValueInt64())
+	}
+}
+
+func TestStateFromAppJob_WithDirectorySource(t *testing.T) {
+	t.Parallel()
+
+	jobID := openapi_types.UUID(uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"))
+	sourceDirectory := "jobs/web"
+	jobFilePath := "jobs/web/job.nomad.hcl"
+
+	state := stateFromAppJob(JobResourceModel{
+		OrgName: types.StringValue("platform"),
+		AppSlug: types.StringValue("payments"),
+	}, sdk.AppJob{
+		ID:              jobID,
+		Slug:            "web",
+		Name:            "Web",
+		JobspecPath:     sourceDirectory,
+		JobspecType:     "hcl",
+		SourceMode:      sdk.AppJobSourceModeDirectory,
+		SourceDirectory: &sourceDirectory,
+		JobFilePath:     &jobFilePath,
+		JobVarFilePaths: []string{"jobs/web/base.hcl", "jobs/web/generated.json"},
+		Priority:        primaryJobPriority,
+	})
+
+	if state.JobspecPath.ValueString() != sourceDirectory {
+		t.Fatalf("unexpected jobspec_path: %q", state.JobspecPath.ValueString())
+	}
+	if state.SourceMode.ValueString() != "directory" {
+		t.Fatalf("unexpected source_mode: %q", state.SourceMode.ValueString())
+	}
+	if state.SourceDirectory.ValueString() != sourceDirectory {
+		t.Fatalf("unexpected source_directory: %q", state.SourceDirectory.ValueString())
+	}
+	if state.JobFilePath.ValueString() != jobFilePath {
+		t.Fatalf("unexpected job_file_path: %q", state.JobFilePath.ValueString())
+	}
+
+	var paths []string
+	diags := state.JobVarFilePaths.ElementsAs(context.Background(), &paths, false)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if len(paths) != 2 || paths[0] != "jobs/web/base.hcl" || paths[1] != "jobs/web/generated.json" {
+		t.Fatalf("unexpected job_var_file_paths: %#v", paths)
 	}
 }
 
@@ -239,19 +306,150 @@ func TestBuildCreateAppJobBodyIncludesDeploymentGroupPriority(t *testing.T) {
 	}
 }
 
+func TestBuildCreateAppJobBody_IncludesDirectorySource(t *testing.T) {
+	t.Parallel()
+
+	varFilePaths, diags := types.ListValueFrom(context.Background(), types.StringType, []string{
+		"jobs/web/base.hcl",
+		"jobs/web/generated.json",
+	})
+	if diags.HasError() {
+		t.Fatalf("failed to build var file list: %v", diags)
+	}
+
+	body, diags := buildCreateAppJobBody(JobResourceModel{
+		Name:            types.StringValue("Web"),
+		JobspecType:     types.StringValue("hcl"),
+		SourceMode:      types.StringValue("directory"),
+		SourceDirectory: types.StringValue("jobs/web"),
+		JobFilePath:     types.StringValue("jobs/web/job.nomad.hcl"),
+		JobVarFilePaths: varFilePaths,
+	})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if body.SourceMode == nil || *body.SourceMode != sdk.CreateAppJobRequestSourceModeDirectory {
+		t.Fatalf("SourceMode = %#v, want directory", body.SourceMode)
+	}
+	if body.SourceDirectory == nil || *body.SourceDirectory != "jobs/web" {
+		t.Fatalf("SourceDirectory = %#v, want jobs/web", body.SourceDirectory)
+	}
+	if body.JobFilePath == nil || *body.JobFilePath != "jobs/web/job.nomad.hcl" {
+		t.Fatalf("JobFilePath = %#v, want jobs/web/job.nomad.hcl", body.JobFilePath)
+	}
+	if body.JobVarFilePaths == nil || len(*body.JobVarFilePaths) != 2 || (*body.JobVarFilePaths)[1] != "jobs/web/generated.json" {
+		t.Fatalf("JobVarFilePaths = %#v, want HCL and JSON var files", body.JobVarFilePaths)
+	}
+	if body.JobspecPath != nil {
+		t.Fatalf("JobspecPath = %#v, want omitted for directory source", body.JobspecPath)
+	}
+}
+
 func TestBuildUpdateAppJobBodyIncludesChangedDeploymentGroupPriority(t *testing.T) {
 	t.Parallel()
 
 	body, diags := buildUpdateAppJobBody(JobResourceModel{
-		Priority: types.Int64Value(2),
+		JobspecPath: types.StringValue("jobs/web.nomad.hcl"),
+		JobspecType: types.StringValue("hcl"),
+		Priority:    types.Int64Value(2),
 	}, JobResourceModel{
-		Priority: types.Int64Value(1),
+		JobspecPath: types.StringValue("jobs/web.nomad.hcl"),
+		JobspecType: types.StringValue("hcl"),
+		Priority:    types.Int64Value(1),
 	})
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
 	if body.Priority == nil || *body.Priority != 2 {
 		t.Fatalf("priority = %v, want 2", body.Priority)
+	}
+}
+
+func TestBuildUpdateAppJobBody_IncludesChangedDirectorySource(t *testing.T) {
+	t.Parallel()
+
+	planVarFiles, diags := types.ListValueFrom(context.Background(), types.StringType, []string{
+		"jobs/web/base.hcl",
+		"jobs/web/generated.json",
+	})
+	if diags.HasError() {
+		t.Fatalf("failed to build plan var file list: %v", diags)
+	}
+	stateVarFiles, diags := types.ListValueFrom(context.Background(), types.StringType, []string{
+		"jobs/web/base.hcl",
+	})
+	if diags.HasError() {
+		t.Fatalf("failed to build state var file list: %v", diags)
+	}
+
+	body, diags := buildUpdateAppJobBody(
+		JobResourceModel{
+			Name:            types.StringValue("Web"),
+			JobspecPath:     types.StringValue("jobs/web"),
+			JobspecType:     types.StringValue("hcl"),
+			SourceMode:      types.StringValue("directory"),
+			SourceDirectory: types.StringValue("jobs/web"),
+			JobFilePath:     types.StringValue("jobs/web/job.nomad.hcl"),
+			JobVarFilePaths: planVarFiles,
+		},
+		JobResourceModel{
+			Name:            types.StringValue("Web"),
+			JobspecPath:     types.StringValue("jobs/web"),
+			JobspecType:     types.StringValue("hcl"),
+			SourceMode:      types.StringValue("directory"),
+			SourceDirectory: types.StringValue("jobs/web"),
+			JobFilePath:     types.StringNull(),
+			JobVarFilePaths: stateVarFiles,
+		},
+	)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if body.JobFilePath == nil || *body.JobFilePath != "jobs/web/job.nomad.hcl" {
+		t.Fatalf("JobFilePath = %#v, want updated path", body.JobFilePath)
+	}
+	if body.JobVarFilePaths == nil || len(*body.JobVarFilePaths) != 2 || (*body.JobVarFilePaths)[1] != "jobs/web/generated.json" {
+		t.Fatalf("JobVarFilePaths = %#v, want updated var files", body.JobVarFilePaths)
+	}
+}
+
+func TestBuildCreateAppJobBody_RejectsInvalidSourceCombinations(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]JobResourceModel{
+		"file without jobspec_path": {
+			Name:        types.StringValue("Web"),
+			JobspecType: types.StringValue("hcl"),
+		},
+		"file with source directory": {
+			Name:            types.StringValue("Web"),
+			JobspecPath:     types.StringValue("jobs/web.nomad.hcl"),
+			JobspecType:     types.StringValue("hcl"),
+			SourceMode:      types.StringValue("file"),
+			SourceDirectory: types.StringValue("jobs/web"),
+		},
+		"directory without source directory": {
+			Name:        types.StringValue("Web"),
+			JobspecType: types.StringValue("hcl"),
+			SourceMode:  types.StringValue("directory"),
+		},
+		"invalid source mode": {
+			Name:        types.StringValue("Web"),
+			JobspecPath: types.StringValue("jobs/web.nomad.hcl"),
+			JobspecType: types.StringValue("hcl"),
+			SourceMode:  types.StringValue("archive"),
+		},
+	}
+
+	for name, plan := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			_, diags := buildCreateAppJobBody(plan)
+			if !diags.HasError() {
+				t.Fatal("expected diagnostics error")
+			}
+		})
 	}
 }
 

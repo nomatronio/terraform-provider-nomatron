@@ -34,6 +34,10 @@ type JobDataSourceModel struct {
 	EffectiveRepoURL types.String `tfsdk:"effective_repo_url"`
 	JobspecPath      types.String `tfsdk:"jobspec_path"`
 	JobspecType      types.String `tfsdk:"jobspec_type"`
+	SourceMode       types.String `tfsdk:"source_mode"`
+	SourceDirectory  types.String `tfsdk:"source_directory"`
+	JobFilePath      types.String `tfsdk:"job_file_path"`
+	JobVarFilePaths  types.List   `tfsdk:"job_var_file_paths"`
 	IsPrimary        types.Bool   `tfsdk:"is_primary"`
 	Priority         types.Int64  `tfsdk:"priority"`
 	CreatedAt        types.String `tfsdk:"created_at"`
@@ -95,6 +99,23 @@ func (d *JobDataSource) Schema(ctx context.Context, req datasource.SchemaRequest
 			"jobspec_type": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "Job spec source type.",
+			},
+			"source_mode": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Source shape for this job. `file` uses the existing single jobspec path behavior; `directory` points at a repository directory containing one Nomad jobspec and optional Nomad jobspec var files.",
+			},
+			"source_directory": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Repository-relative directory used when `source_mode` is `directory`.",
+			},
+			"job_file_path": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Optional repository-relative Nomad jobspec file within `source_directory`.",
+			},
+			"job_var_file_paths": schema.ListAttribute{
+				Computed:            true,
+				ElementType:         types.StringType,
+				MarkdownDescription: "Ordered repository-relative Nomad jobspec var files used only with HCL jobspecs. Entries may be HCL assignment files or JSON object files.",
 			},
 			"is_primary": schema.BoolAttribute{
 				Computed:            true,
@@ -185,6 +206,13 @@ func flattenJobDataSource(base JobDataSourceModel, job sdk.AppJob) JobDataSource
 		effectiveRepoURL = types.StringValue(job.EffectiveRepoURL)
 	}
 
+	sourceMode := types.StringNull()
+	if job.SourceMode != "" {
+		sourceMode = types.StringValue(string(job.SourceMode))
+	}
+
+	jobVarFilePaths := jobVarFilePathsState(job.JobVarFilePaths)
+
 	createdAt := types.StringNull()
 	if !job.CreatedAt.IsZero() {
 		createdAt = types.StringValue(job.CreatedAt.Format(time.RFC3339))
@@ -208,6 +236,10 @@ func flattenJobDataSource(base JobDataSourceModel, job sdk.AppJob) JobDataSource
 		EffectiveRepoURL: effectiveRepoURL,
 		JobspecPath:      types.StringValue(job.JobspecPath),
 		JobspecType:      types.StringValue(job.JobspecType),
+		SourceMode:       sourceMode,
+		SourceDirectory:  stringState(job.SourceDirectory),
+		JobFilePath:      stringState(job.JobFilePath),
+		JobVarFilePaths:  jobVarFilePaths,
 		IsPrimary:        types.BoolValue(job.Priority == primaryJobPriority),
 		Priority:         types.Int64Value(int64(job.Priority)),
 		CreatedAt:        createdAt,
