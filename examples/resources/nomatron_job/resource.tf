@@ -9,3 +9,20 @@ resource "nomatron_job" "example" {
   default_namespace = "payments"
   priority          = 1
 }
+
+resource "nomatron_job" "directory" {
+  org_name         = "platform"
+  app_slug         = "payments"
+  name             = "Worker"
+  slug             = "worker"
+  jobspec_type     = "hcl"
+  source_mode      = "directory"
+  source_directory = "jobs/worker"
+  job_file_path    = "jobs/worker/job.nomad.hcl"
+  job_var_file_paths = [
+    "jobs/worker/base.hcl",
+    "jobs/worker/generated.json",
+  ]
+  default_namespace = "payments"
+  priority          = 2
+}

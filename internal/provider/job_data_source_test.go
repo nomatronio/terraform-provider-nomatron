@@ -64,6 +64,10 @@ func TestJobDataSource_Schema(t *testing.T) {
 	assertJobDataSourceStringAttribute(t, attrs, "effective_repo_url", false, false, true)
 	assertJobDataSourceStringAttribute(t, attrs, "jobspec_path", false, false, true)
 	assertJobDataSourceStringAttribute(t, attrs, "jobspec_type", false, false, true)
+	assertJobDataSourceStringAttribute(t, attrs, "source_mode", false, false, true)
+	assertJobDataSourceStringAttribute(t, attrs, "source_directory", false, false, true)
+	assertJobDataSourceStringAttribute(t, attrs, "job_file_path", false, false, true)
+	assertDataSourceListAttribute(t, attrs, "job_var_file_paths", false, false, true)
 	assertJobDataSourceBoolAttribute(t, attrs, "is_primary", false, false, true)
 	assertJobDataSourceInt64Attribute(t, attrs, "priority", false, false, true)
 	assertJobDataSourceStringAttribute(t, attrs, "created_at", false, false, true)
@@ -154,6 +158,7 @@ func TestFlattenJobDataSource(t *testing.T) {
 		EffectiveRepoURL: repoURL,
 		JobspecPath:      "jobs/web.nomad.hcl",
 		JobspecType:      "hcl",
+		SourceMode:       sdk.AppJobSourceModeFile,
 		Priority:         primaryJobPriority,
 		CreatedAt:        createdAt,
 		UpdatedAt:        updatedAt,
@@ -195,6 +200,9 @@ func TestFlattenJobDataSource(t *testing.T) {
 	if data.JobspecType.ValueString() != "hcl" {
 		t.Fatalf("unexpected jobspec_type: %q", data.JobspecType.ValueString())
 	}
+	if data.SourceMode.ValueString() != "file" {
+		t.Fatalf("unexpected source_mode: %q", data.SourceMode.ValueString())
+	}
 	if !data.IsPrimary.ValueBool() {
 		t.Fatal("expected is_primary=true")
 	}
@@ -224,6 +232,7 @@ func TestFlattenJobDataSource_WithNullOptionalFields(t *testing.T) {
 		Name:        "Web",
 		JobspecPath: "jobs/web.nomad.hcl",
 		JobspecType: "hcl",
+		SourceMode:  sdk.AppJobSourceModeFile,
 		Priority:    primaryJobPriority * 2,
 	})
 
@@ -239,6 +248,18 @@ func TestFlattenJobDataSource_WithNullOptionalFields(t *testing.T) {
 	if !data.EffectiveRepoURL.IsNull() {
 		t.Fatal("expected effective_repo_url to be null")
 	}
+	if data.SourceMode.ValueString() != "file" {
+		t.Fatalf("unexpected source_mode: %q", data.SourceMode.ValueString())
+	}
+	if !data.SourceDirectory.IsNull() {
+		t.Fatal("expected source_directory to be null")
+	}
+	if !data.JobFilePath.IsNull() {
+		t.Fatal("expected job_file_path to be null")
+	}
+	if !data.JobVarFilePaths.IsNull() {
+		t.Fatal("expected job_var_file_paths to be null")
+	}
 	if !data.DefaultNamespace.IsNull() {
 		t.Fatal("expected default_namespace to be null")
 	}
@@ -253,6 +274,50 @@ func TestFlattenJobDataSource_WithNullOptionalFields(t *testing.T) {
 	}
 	if data.Priority.ValueInt64() != int64(primaryJobPriority*2) {
 		t.Fatalf("unexpected priority: %d", data.Priority.ValueInt64())
+	}
+}
+
+func TestFlattenJobDataSource_WithDirectorySource(t *testing.T) {
+	t.Parallel()
+
+	jobID := openapi_types.UUID(uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"))
+	sourceDirectory := "jobs/web"
+	jobFilePath := "jobs/web/job.nomad.hcl"
+
+	data := flattenJobDataSource(JobDataSourceModel{
+		OrgName: types.StringValue("platform"),
+		AppSlug: types.StringValue("payments"),
+		Slug:    types.StringValue("web"),
+	}, sdk.AppJob{
+		ID:              jobID,
+		Slug:            "web",
+		Name:            "Web",
+		JobspecPath:     sourceDirectory,
+		JobspecType:     "hcl",
+		SourceMode:      sdk.AppJobSourceModeDirectory,
+		SourceDirectory: &sourceDirectory,
+		JobFilePath:     &jobFilePath,
+		JobVarFilePaths: []string{"jobs/web/base.hcl", "jobs/web/generated.json"},
+		Priority:        primaryJobPriority,
+	})
+
+	if data.SourceMode.ValueString() != "directory" {
+		t.Fatalf("unexpected source_mode: %q", data.SourceMode.ValueString())
+	}
+	if data.SourceDirectory.ValueString() != sourceDirectory {
+		t.Fatalf("unexpected source_directory: %q", data.SourceDirectory.ValueString())
+	}
+	if data.JobFilePath.ValueString() != jobFilePath {
+		t.Fatalf("unexpected job_file_path: %q", data.JobFilePath.ValueString())
+	}
+
+	var paths []string
+	diags := data.JobVarFilePaths.ElementsAs(context.Background(), &paths, false)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if len(paths) != 2 || paths[0] != "jobs/web/base.hcl" || paths[1] != "jobs/web/generated.json" {
+		t.Fatalf("unexpected job_var_file_paths: %#v", paths)
 	}
 }
 
