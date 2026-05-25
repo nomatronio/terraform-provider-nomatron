@@ -32,24 +32,25 @@ func NewApplicationResource() resource.Resource {
 }
 
 type ApplicationResourceModel struct {
-	OrgName        types.String `tfsdk:"org_name"`
-	ID             types.String `tfsdk:"id"`
-	Slug           types.String `tfsdk:"slug"`
-	Name           types.String `tfsdk:"name"`
-	Description    types.String `tfsdk:"description"`
-	ClusterID      types.String `tfsdk:"cluster_id"`
-	RepoURL        types.String `tfsdk:"repo_url"`
-	GitProvider    types.String `tfsdk:"git_provider"`
-	Ref            types.String `tfsdk:"ref"`
-	TriggerMode    types.String `tfsdk:"trigger_mode"`
-	TagPatternType types.String `tfsdk:"tag_pattern_type"`
-	TagPattern     types.String `tfsdk:"tag_pattern"`
-	AutoPlan       types.Bool   `tfsdk:"auto_plan"`
-	AutoApply      types.Bool   `tfsdk:"auto_apply"`
-	VcsGitHubID    types.String `tfsdk:"vcs_github_id"`
-	CreatedAt      types.String `tfsdk:"created_at"`
-	UpdatedAt      types.String `tfsdk:"updated_at"`
-	UpdatedBy      types.String `tfsdk:"updated_by"`
+	OrgName                  types.String `tfsdk:"org_name"`
+	ID                       types.String `tfsdk:"id"`
+	Slug                     types.String `tfsdk:"slug"`
+	Name                     types.String `tfsdk:"name"`
+	Description              types.String `tfsdk:"description"`
+	ClusterID                types.String `tfsdk:"cluster_id"`
+	RepoURL                  types.String `tfsdk:"repo_url"`
+	GitProvider              types.String `tfsdk:"git_provider"`
+	Ref                      types.String `tfsdk:"ref"`
+	TriggerMode              types.String `tfsdk:"trigger_mode"`
+	TagPatternType           types.String `tfsdk:"tag_pattern_type"`
+	TagPattern               types.String `tfsdk:"tag_pattern"`
+	AutoPlan                 types.Bool   `tfsdk:"auto_plan"`
+	AutoApply                types.Bool   `tfsdk:"auto_apply"`
+	VcsGitHubID              types.String `tfsdk:"vcs_github_id"`
+	SkipRepoAccessValidation types.Bool   `tfsdk:"skip_repo_access_validation"`
+	CreatedAt                types.String `tfsdk:"created_at"`
+	UpdatedAt                types.String `tfsdk:"updated_at"`
+	UpdatedBy                types.String `tfsdk:"updated_by"`
 }
 
 func (r *ApplicationResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -167,6 +168,13 @@ func (r *ApplicationResource) Schema(ctx context.Context, req resource.SchemaReq
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
+			"skip_repo_access_validation": schema.BoolAttribute{
+				Optional:            true,
+				MarkdownDescription: "Skip GitHub repository/install access validation when creating the application. Use only for bootstrap or automation flows where the integration may be installed after Terraform creates the app.",
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.RequiresReplace(),
+				},
+			},
 			"created_at": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "Timestamp when the application was created.",
@@ -274,7 +282,8 @@ func (r *ApplicationResource) Create(ctx context.Context, req resource.CreateReq
 		body.VcsGithubId = &vcsGitHubID
 	}
 
-	rsp, err := r.client.CreateAppWithResponse(ctx, plan.OrgName.ValueString(), nil, body)
+	params := createApplicationParams(plan)
+	rsp, err := r.client.CreateAppWithResponse(ctx, plan.OrgName.ValueString(), params, body)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed To Create Application", err.Error())
 		return
@@ -620,25 +629,34 @@ func stateFromApplication(base ApplicationResourceModel, app sdk.App) Applicatio
 	}
 
 	return ApplicationResourceModel{
-		OrgName:        base.OrgName,
-		ID:             types.StringValue(app.Id.String()),
-		Slug:           types.StringValue(app.Slug),
-		Name:           types.StringValue(app.Name),
-		Description:    description,
-		ClusterID:      clusterID,
-		RepoURL:        repoURL,
-		GitProvider:    gitProvider,
-		Ref:            ref,
-		TriggerMode:    triggerMode,
-		TagPatternType: tagPatternType,
-		TagPattern:     tagPattern,
-		AutoPlan:       types.BoolValue(app.AutoPlan),
-		AutoApply:      types.BoolValue(app.AutoApply),
-		VcsGitHubID:    vcsGitHubID,
-		CreatedAt:      createdAt,
-		UpdatedAt:      updatedAt,
-		UpdatedBy:      updatedBy,
+		OrgName:                  base.OrgName,
+		ID:                       types.StringValue(app.Id.String()),
+		Slug:                     types.StringValue(app.Slug),
+		Name:                     types.StringValue(app.Name),
+		Description:              description,
+		ClusterID:                clusterID,
+		RepoURL:                  repoURL,
+		GitProvider:              gitProvider,
+		Ref:                      ref,
+		TriggerMode:              triggerMode,
+		TagPatternType:           tagPatternType,
+		TagPattern:               tagPattern,
+		AutoPlan:                 types.BoolValue(app.AutoPlan),
+		AutoApply:                types.BoolValue(app.AutoApply),
+		VcsGitHubID:              vcsGitHubID,
+		SkipRepoAccessValidation: base.SkipRepoAccessValidation,
+		CreatedAt:                createdAt,
+		UpdatedAt:                updatedAt,
+		UpdatedBy:                updatedBy,
 	}
+}
+
+func createApplicationParams(plan ApplicationResourceModel) *sdk.CreateAppParams {
+	if plan.SkipRepoAccessValidation.IsNull() || plan.SkipRepoAccessValidation.IsUnknown() || !plan.SkipRepoAccessValidation.ValueBool() {
+		return nil
+	}
+	validate := false
+	return &sdk.CreateAppParams{Validate: &validate}
 }
 
 func applyApplicationTriggerCreate(plan ApplicationResourceModel, body *sdk.CreateAppJSONRequestBody) diag.Diagnostics {

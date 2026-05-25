@@ -24,3 +24,15 @@ resource "nomatron_application" "tagged_release" {
   auto_plan        = true
   auto_apply       = false
 }
+
+resource "nomatron_application" "bootstrap_without_repo_validation" {
+  org_name                    = "platform"
+  name                        = "Bootstrap App"
+  slug                        = "bootstrap-app"
+  cluster_id                  = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+  repo_url                    = "https://github.com/nomatron/bootstrap-app"
+  git_provider                = "github"
+  trigger_mode                = "branch_commit"
+  ref                         = "main"
+  skip_repo_access_validation = true
+}

@@ -63,6 +63,7 @@ func TestApplicationResource_Schema(t *testing.T) {
 	assertResourceBoolAttribute(t, attrs, "auto_plan", false, true, true)
 	assertResourceBoolAttribute(t, attrs, "auto_apply", false, true, true)
 	assertResourceStringAttribute(t, attrs, "vcs_github_id", false, true, false, false)
+	assertResourceBoolAttribute(t, attrs, "skip_repo_access_validation", false, true, false)
 	assertResourceStringAttribute(t, attrs, "created_at", false, false, true, false)
 	assertResourceStringAttribute(t, attrs, "updated_at", false, false, true, false)
 	assertResourceStringAttribute(t, attrs, "updated_by", false, false, true, false)
@@ -113,7 +114,8 @@ func TestStateFromApplication(t *testing.T) {
 	updatedAt := time.Date(2026, 3, 26, 13, 0, 0, 0, time.UTC)
 
 	state := stateFromApplication(ApplicationResourceModel{
-		OrgName: types.StringValue("platform"),
+		OrgName:                  types.StringValue("platform"),
+		SkipRepoAccessValidation: types.BoolValue(true),
 	}, sdk.App{
 		Id:          appID,
 		Slug:        "payments",
@@ -166,6 +168,9 @@ func TestStateFromApplication(t *testing.T) {
 	}
 	if state.VcsGitHubID.ValueString() != vcsGitHubID.String() {
 		t.Fatalf("unexpected vcs_github_id: %q", state.VcsGitHubID.ValueString())
+	}
+	if !state.SkipRepoAccessValidation.ValueBool() {
+		t.Fatal("expected skip_repo_access_validation to preserve configured value")
 	}
 	if state.CreatedAt.ValueString() != createdAt.Format(time.RFC3339) {
 		t.Fatalf("unexpected created_at: %q", state.CreatedAt.ValueString())
@@ -259,6 +264,40 @@ func TestLowerCaseStringPlanModifier(t *testing.T) {
 
 	if resp.PlanValue.ValueString() != "github" {
 		t.Fatalf("expected normalized plan value, got %q", resp.PlanValue.ValueString())
+	}
+}
+
+func TestCreateApplicationParams_SkipRepoAccessValidation(t *testing.T) {
+	t.Parallel()
+
+	params := createApplicationParams(ApplicationResourceModel{
+		SkipRepoAccessValidation: types.BoolValue(true),
+	})
+	if params == nil || params.Validate == nil {
+		t.Fatal("expected create params with validate=false")
+	}
+	if *params.Validate {
+		t.Fatal("expected validate=false when skip_repo_access_validation is true")
+	}
+}
+
+func TestCreateApplicationParams_DefaultValidation(t *testing.T) {
+	t.Parallel()
+
+	for name, value := range map[string]types.Bool{
+		"unset":   types.BoolNull(),
+		"unknown": types.BoolUnknown(),
+		"false":   types.BoolValue(false),
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			params := createApplicationParams(ApplicationResourceModel{
+				SkipRepoAccessValidation: value,
+			})
+			if params != nil {
+				t.Fatalf("expected nil params for %s, got %#v", name, params)
+			}
+		})
 	}
 }
 
