@@ -34,8 +34,6 @@ type ApplicationDataSourceModel struct {
 	TriggerMode    types.String `tfsdk:"trigger_mode"`
 	TagPatternType types.String `tfsdk:"tag_pattern_type"`
 	TagPattern     types.String `tfsdk:"tag_pattern"`
-	AutoPlan       types.Bool   `tfsdk:"auto_plan"`
-	AutoApply      types.Bool   `tfsdk:"auto_apply"`
 	VcsGitHubID    types.String `tfsdk:"vcs_github_id"`
 	CreatedAt      types.String `tfsdk:"created_at"`
 	UpdatedAt      types.String `tfsdk:"updated_at"`
@@ -97,14 +95,6 @@ func (d *ApplicationDataSource) Schema(ctx context.Context, req datasource.Schem
 			"tag_pattern": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "Prefix, suffix, or regular expression used by tag-based triggers.",
-			},
-			"auto_plan": schema.BoolAttribute{
-				Computed:            true,
-				MarkdownDescription: "Whether Nomatron automatically plans changes for this application.",
-			},
-			"auto_apply": schema.BoolAttribute{
-				Computed:            true,
-				MarkdownDescription: "Whether Nomatron automatically applies approved changes for this application.",
 			},
 			"vcs_github_id": schema.StringAttribute{
 				Computed:            true,
@@ -225,8 +215,6 @@ func flattenApplicationDataSource(base ApplicationDataSourceModel, app sdk.App) 
 		TriggerMode:    triggerMode,
 		TagPatternType: tagPatternType,
 		TagPattern:     tagPattern,
-		AutoPlan:       types.BoolValue(app.AutoPlan),
-		AutoApply:      types.BoolValue(app.AutoApply),
 		VcsGitHubID:    vcsGitHubID,
 		CreatedAt:      createdAt,
 		UpdatedAt:      updatedAt,

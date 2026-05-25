@@ -22,8 +22,6 @@ resource "nomatron_application" "example" {
   git_provider = "github"
   trigger_mode = "branch_commit"
   ref          = "main"
-  auto_plan    = true
-  auto_apply   = false
 }
 
 resource "nomatron_application" "tagged_release" {
@@ -36,8 +34,6 @@ resource "nomatron_application" "tagged_release" {
   trigger_mode     = "tag"
   tag_pattern_type = "prefix"
   tag_pattern      = "v-"
-  auto_plan        = true
-  auto_apply       = false
 }
 
 resource "nomatron_application" "bootstrap_without_repo_validation" {
@@ -65,8 +61,6 @@ resource "nomatron_application" "bootstrap_without_repo_validation" {
 
 ### Optional
 
-- `auto_apply` (Boolean) Whether Nomatron automatically applies approved changes for this application.
-- `auto_plan` (Boolean) Whether Nomatron automatically plans changes for this application.
 - `description` (String) Application description.
 - `git_provider` (String) Git provider for the repository, such as `github`.
 - `ref` (String) Branch ref tracked when `trigger_mode` is `branch_commit`. Defaults to `main` when omitted.

@@ -29,8 +29,6 @@ data "nomatron_application" "example" {
 
 ### Read-Only
 
-- `auto_apply` (Boolean) Whether Nomatron automatically applies approved changes for this application.
-- `auto_plan` (Boolean) Whether Nomatron automatically plans changes for this application.
 - `cluster_id` (String) Nomad cluster ID backing the application.
 - `created_at` (String) Timestamp when the application was created.
 - `description` (String) Application description.
