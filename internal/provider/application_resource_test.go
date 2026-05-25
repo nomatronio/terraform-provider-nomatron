@@ -60,8 +60,6 @@ func TestApplicationResource_Schema(t *testing.T) {
 	assertResourceStringAttribute(t, attrs, "repo_url", true, false, false, false)
 	assertResourceStringAttribute(t, attrs, "git_provider", false, true, true, false)
 	assertResourceStringAttribute(t, attrs, "ref", false, true, true, false)
-	assertResourceBoolAttribute(t, attrs, "auto_plan", false, true, true)
-	assertResourceBoolAttribute(t, attrs, "auto_apply", false, true, true)
 	assertResourceStringAttribute(t, attrs, "vcs_github_id", false, true, false, false)
 	assertResourceBoolAttribute(t, attrs, "skip_repo_access_validation", false, true, false)
 	assertResourceStringAttribute(t, attrs, "created_at", false, false, true, false)
@@ -125,8 +123,6 @@ func TestStateFromApplication(t *testing.T) {
 		RepoUrl:     "https://github.com/nomatron/payments",
 		GitProvider: sdk.Github,
 		Ref:         &ref,
-		AutoPlan:    true,
-		AutoApply:   false,
 		VcsGithubId: &vcsGitHubID,
 		CreatedAt:   createdAt,
 		UpdatedAt:   updatedAt,
@@ -159,12 +155,6 @@ func TestStateFromApplication(t *testing.T) {
 	}
 	if state.Ref.ValueString() != ref {
 		t.Fatalf("unexpected ref: %q", state.Ref.ValueString())
-	}
-	if !state.AutoPlan.ValueBool() {
-		t.Fatal("expected auto_plan=true")
-	}
-	if state.AutoApply.ValueBool() {
-		t.Fatal("expected auto_apply=false")
 	}
 	if state.VcsGitHubID.ValueString() != vcsGitHubID.String() {
 		t.Fatalf("unexpected vcs_github_id: %q", state.VcsGitHubID.ValueString())
@@ -201,8 +191,6 @@ func TestStateFromApplication_WithNullOptionalFields(t *testing.T) {
 		ClusterId:   clusterID,
 		RepoUrl:     "https://github.com/nomatron/payments",
 		GitProvider: sdk.Github,
-		AutoPlan:    false,
-		AutoApply:   false,
 	})
 
 	if !state.Description.IsNull() {

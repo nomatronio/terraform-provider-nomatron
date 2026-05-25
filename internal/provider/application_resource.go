@@ -44,8 +44,6 @@ type ApplicationResourceModel struct {
 	TriggerMode              types.String `tfsdk:"trigger_mode"`
 	TagPatternType           types.String `tfsdk:"tag_pattern_type"`
 	TagPattern               types.String `tfsdk:"tag_pattern"`
-	AutoPlan                 types.Bool   `tfsdk:"auto_plan"`
-	AutoApply                types.Bool   `tfsdk:"auto_apply"`
 	VcsGitHubID              types.String `tfsdk:"vcs_github_id"`
 	SkipRepoAccessValidation types.Bool   `tfsdk:"skip_repo_access_validation"`
 	CreatedAt                types.String `tfsdk:"created_at"`
@@ -143,22 +141,6 @@ func (r *ApplicationResource) Schema(ctx context.Context, req resource.SchemaReq
 				MarkdownDescription: "Prefix, suffix, or regular expression used when `trigger_mode` is `tag`. Leave unset for `semver`.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"auto_plan": schema.BoolAttribute{
-				Optional:            true,
-				Computed:            true,
-				MarkdownDescription: "Whether Nomatron automatically plans changes for this application.",
-				PlanModifiers: []planmodifier.Bool{
-					boolplanmodifier.UseStateForUnknown(),
-				},
-			},
-			"auto_apply": schema.BoolAttribute{
-				Optional:            true,
-				Computed:            true,
-				MarkdownDescription: "Whether Nomatron automatically applies approved changes for this application.",
-				PlanModifiers: []planmodifier.Bool{
-					boolplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"vcs_github_id": schema.StringAttribute{
@@ -264,14 +246,6 @@ func (r *ApplicationResource) Create(ctx context.Context, req resource.CreateReq
 	if !plan.Slug.IsNull() && !plan.Slug.IsUnknown() && plan.Slug.ValueString() != "" {
 		slug := plan.Slug.ValueString()
 		body.Slug = &slug
-	}
-	if !plan.AutoPlan.IsNull() && !plan.AutoPlan.IsUnknown() {
-		autoPlan := plan.AutoPlan.ValueBool()
-		body.AutoPlan = &autoPlan
-	}
-	if !plan.AutoApply.IsNull() && !plan.AutoApply.IsUnknown() {
-		autoApply := plan.AutoApply.ValueBool()
-		body.AutoApply = &autoApply
 	}
 	if !plan.VcsGitHubID.IsNull() && !plan.VcsGitHubID.IsUnknown() && plan.VcsGitHubID.ValueString() != "" {
 		vcsGitHubID, parseErr := parseAgentID(plan.VcsGitHubID.ValueString())
@@ -390,14 +364,6 @@ func (r *ApplicationResource) Update(ctx context.Context, req resource.UpdateReq
 	if diags := applyApplicationTriggerUpdate(plan, state, &body); diags != nil {
 		resp.Diagnostics.Append(diags...)
 		return
-	}
-	if boolValueChanged(plan.AutoPlan, state.AutoPlan) && !plan.AutoPlan.IsNull() && !plan.AutoPlan.IsUnknown() {
-		autoPlan := plan.AutoPlan.ValueBool()
-		body.AutoPlan = &autoPlan
-	}
-	if boolValueChanged(plan.AutoApply, state.AutoApply) && !plan.AutoApply.IsNull() && !plan.AutoApply.IsUnknown() {
-		autoApply := plan.AutoApply.ValueBool()
-		body.AutoApply = &autoApply
 	}
 	if stringValueChanged(plan.ClusterID, state.ClusterID) && !plan.ClusterID.IsNull() && !plan.ClusterID.IsUnknown() {
 		clusterID, err := parseAgentID(plan.ClusterID.ValueString())
@@ -641,8 +607,6 @@ func stateFromApplication(base ApplicationResourceModel, app sdk.App) Applicatio
 		TriggerMode:              triggerMode,
 		TagPatternType:           tagPatternType,
 		TagPattern:               tagPattern,
-		AutoPlan:                 types.BoolValue(app.AutoPlan),
-		AutoApply:                types.BoolValue(app.AutoApply),
 		VcsGitHubID:              vcsGitHubID,
 		SkipRepoAccessValidation: base.SkipRepoAccessValidation,
 		CreatedAt:                createdAt,

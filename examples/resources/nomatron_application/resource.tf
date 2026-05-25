@@ -7,8 +7,6 @@ resource "nomatron_application" "example" {
   git_provider = "github"
   trigger_mode = "branch_commit"
   ref          = "main"
-  auto_plan    = true
-  auto_apply   = false
 }
 
 resource "nomatron_application" "tagged_release" {
@@ -21,8 +19,6 @@ resource "nomatron_application" "tagged_release" {
   trigger_mode     = "tag"
   tag_pattern_type = "prefix"
   tag_pattern      = "v-"
-  auto_plan        = true
-  auto_apply       = false
 }
 
 resource "nomatron_application" "bootstrap_without_repo_validation" {
