@@ -208,6 +208,76 @@ func TestStateFromApprovalPolicy(t *testing.T) {
 	}
 }
 
+func TestStateFromApprovalPolicyPreservesConfiguredApproverNames(t *testing.T) {
+	t.Parallel()
+
+	defaultUsers, diags := types.ListValueFrom(context.Background(), types.StringType, []string{"root"})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	defaultGroups, diags := types.ListValueFrom(context.Background(), types.StringType, []string{})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	envUsers, diags := types.ListValueFrom(context.Background(), types.StringType, []string{"root"})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	envGroups, diags := types.ListValueFrom(context.Background(), types.StringType, []string{})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+
+	state, diags := stateFromApprovalPolicy(context.Background(), JobApprovalPolicyResourceModel{
+		OrgName: types.StringValue("platform"),
+		AppSlug: types.StringValue("payments"),
+		DefaultRule: JobApprovalPolicyRuleModel{
+			RequiredApprovals: types.Int64Value(0),
+			Users:             defaultUsers,
+			Groups:            defaultGroups,
+		},
+		EnvironmentRules: []JobApprovalPolicyEnvironmentRuleModel{
+			{
+				EnvironmentID:     types.StringValue("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+				RequiredApprovals: types.Int64Value(1),
+				Users:             envUsers,
+				Groups:            envGroups,
+			},
+		},
+	}, approvalPolicyDTO{
+		Version: 2,
+		DefaultRule: approvalPolicyRuleDTO{
+			RequiredApprovals: 0,
+			Approvers: approvalPolicyApproversDTO{
+				Users:  []string{"50ef2390-9bc0-4007-a5e0-a29077cdc049"},
+				Groups: []string{},
+			},
+		},
+		EnvironmentRules: []approvalPolicyEnvironmentDTO{
+			{
+				Environment:       "prod",
+				RequiredApprovals: 1,
+				Approvers: approvalPolicyApproversDTO{
+					Users:  []string{"50ef2390-9bc0-4007-a5e0-a29077cdc049"},
+					Groups: []string{},
+				},
+			},
+		},
+	}, map[string]string{"prod": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"})
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+
+	var users []string
+	diags = state.EnvironmentRules[0].Users.ElementsAs(context.Background(), &users, false)
+	if diags.HasError() {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if len(users) != 1 || users[0] != "root" {
+		t.Fatalf("unexpected environment users: %#v", users)
+	}
+}
+
 func TestParseApprovalPolicyImportID(t *testing.T) {
 	t.Parallel()
 

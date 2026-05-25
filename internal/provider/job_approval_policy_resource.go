@@ -469,24 +469,25 @@ func buildUpsertApprovalRule(ctx context.Context, rule JobApprovalPolicyRuleMode
 }
 
 func stateFromApprovalPolicy(ctx context.Context, base JobApprovalPolicyResourceModel, policy approvalPolicyDTO, envIDsByName map[string]string) (JobApprovalPolicyResourceModel, diag.Diagnostics) {
-	defaultRule, diags := stateFromApprovalRule(ctx, policy.DefaultRule)
+	defaultRule, diags := stateFromApprovalRule(ctx, base.DefaultRule, policy.DefaultRule)
 	if diags.HasError() {
 		return JobApprovalPolicyResourceModel{}, diags
 	}
 
 	envRules := make([]JobApprovalPolicyEnvironmentRuleModel, 0, len(policy.EnvironmentRules))
 	for _, rule := range policy.EnvironmentRules {
-		ruleState, ruleDiags := stateFromApprovalRule(ctx, approvalPolicyRuleDTO{
+		envID := envIDsByName[strings.ToLower(strings.TrimSpace(rule.Environment))]
+		if envID == "" {
+			envID = approvalPolicyEnvironmentIDFromBase(base, rule.Environment)
+		}
+		baseRule := approvalPolicyEnvironmentRuleFromBase(base, envID)
+		ruleState, ruleDiags := stateFromApprovalRule(ctx, baseRule, approvalPolicyRuleDTO{
 			RequiredApprovals: rule.RequiredApprovals,
 			Approvers:         rule.Approvers,
 		})
 		diags.Append(ruleDiags...)
 		if diags.HasError() {
 			return JobApprovalPolicyResourceModel{}, diags
-		}
-		envID := envIDsByName[strings.ToLower(strings.TrimSpace(rule.Environment))]
-		if envID == "" {
-			envID = approvalPolicyEnvironmentIDFromBase(base, rule.Environment)
 		}
 		envRules = append(envRules, JobApprovalPolicyEnvironmentRuleModel{
 			EnvironmentID:     types.StringValue(envID),
@@ -506,16 +507,22 @@ func stateFromApprovalPolicy(ctx context.Context, base JobApprovalPolicyResource
 	}, diags
 }
 
-func stateFromApprovalRule(ctx context.Context, rule approvalPolicyRuleDTO) (JobApprovalPolicyRuleModel, diag.Diagnostics) {
+func stateFromApprovalRule(ctx context.Context, base JobApprovalPolicyRuleModel, rule approvalPolicyRuleDTO) (JobApprovalPolicyRuleModel, diag.Diagnostics) {
 	users, diags := types.ListValueFrom(ctx, types.StringType, rule.Approvers.Users)
 	if diags.HasError() {
 		return JobApprovalPolicyRuleModel{}, diags
+	}
+	if !base.Users.IsNull() && !base.Users.IsUnknown() {
+		users = base.Users
 	}
 
 	groupValues, groupDiags := types.ListValueFrom(ctx, types.StringType, rule.Approvers.Groups)
 	diags.Append(groupDiags...)
 	if diags.HasError() {
 		return JobApprovalPolicyRuleModel{}, diags
+	}
+	if !base.Groups.IsNull() && !base.Groups.IsUnknown() {
+		groupValues = base.Groups
 	}
 
 	return JobApprovalPolicyRuleModel{
@@ -557,6 +564,27 @@ func approvalPolicyEnvironmentIDFromBase(base JobApprovalPolicyResourceModel, en
 		return base.EnvironmentRules[0].EnvironmentID.ValueString()
 	}
 	return ""
+}
+
+func approvalPolicyEnvironmentRuleFromBase(base JobApprovalPolicyResourceModel, environmentID string) JobApprovalPolicyRuleModel {
+	for _, rule := range base.EnvironmentRules {
+		if rule.EnvironmentID.ValueString() == environmentID {
+			return JobApprovalPolicyRuleModel{
+				RequiredApprovals: rule.RequiredApprovals,
+				Users:             rule.Users,
+				Groups:            rule.Groups,
+			}
+		}
+	}
+	if len(base.EnvironmentRules) == 1 {
+		rule := base.EnvironmentRules[0]
+		return JobApprovalPolicyRuleModel{
+			RequiredApprovals: rule.RequiredApprovals,
+			Users:             rule.Users,
+			Groups:            rule.Groups,
+		}
+	}
+	return JobApprovalPolicyRuleModel{}
 }
 
 func approvalPolicyID(orgName, appSlug string) string {
