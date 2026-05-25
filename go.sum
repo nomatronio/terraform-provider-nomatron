@@ -138,8 +138,8 @@ github.com/mitchellh/mapstructure v1.5.0 h1:jeMsZIYE/09sWLaz43PL7Gy6RuMjD2eJVyua
 github.com/mitchellh/mapstructure v1.5.0/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
 github.com/mitchellh/reflectwalk v1.0.2 h1:G2LzWKi524PWgd3mLHV8Y5k7s6XUvT0Gef6zxSIeXaQ=
 github.com/mitchellh/reflectwalk v1.0.2/go.mod h1:mSTlrgnPZtwu0c4WaC2kGObEpuNDbx0jmZXqmk4esnw=
-github.com/nomatronio/nomatron v0.0.0-20260525085527-8e4bf33f93d9 h1:NtgirBsK+ZHpdsW/OImm69PK5jyq2KOTVGTknwCtcxg=
-github.com/nomatronio/nomatron v0.0.0-20260525085527-8e4bf33f93d9/go.mod h1:0ZADwmoEx2nD5fUXnBlhyojuznpA9ZVXJL/0uD8NYXI=
+github.com/nomatronio/nomatron v0.0.0-20260523205317-a45060fba5d3 h1:Xn8JzEPotFsKcoD/UThrBk7Ozl2MIP5kYU6YOi48nJg=
+github.com/nomatronio/nomatron v0.0.0-20260523205317-a45060fba5d3/go.mod h1:0ZADwmoEx2nD5fUXnBlhyojuznpA9ZVXJL/0uD8NYXI=
 github.com/oapi-codegen/runtime v1.3.0 h1:vyK1zc0gDWWXgk2xoQa4+X4RNNc5SL2RbTpJS/4vMYA=
 github.com/oapi-codegen/runtime v1.3.0/go.mod h1:kOdeacKy7t40Rclb1je37ZLFboFxh+YLy0zaPCMibPY=
 github.com/oklog/run v1.1.0 h1:GEenZ1cK0+q0+wsJew9qUg/DyD8k3JzYsZAi5gYi2mA=
