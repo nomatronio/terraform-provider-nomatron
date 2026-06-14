@@ -1,14 +1,16 @@
 ---
 page_title: "Nomatron Provider"
 description: |-
-  Terraform provider for managing Nomatron resources, lookups, ephemeral secrets, and operational actions.
+  Terraform provider for managing Nomatron, a deployment control plane for HashiCorp Nomad.
 ---
 
 # Nomatron Provider
 
-The Nomatron provider lets Terraform manage [Nomatron](https://nomatron.io) platform configuration alongside the infrastructure that supports it. Use it to provision organizations, applications, environments, jobs, variables, RBAC objects, GitHub App integrations, Nomad clusters, service accounts, and short-lived credentials through the Nomatron API.
+The Nomatron provider lets Terraform manage [Nomatron](https://nomatron.io) resources as code.
 
-[Nomatron](https://nomatron.io) is an application delivery and operations platform for teams running workloads on HashiCorp Nomad. It gives platform teams a controlled workflow for defining applications, importing Nomad jobs, managing environment-specific settings, and applying operational actions without turning Terraform into the runtime orchestrator.
+[Nomatron](https://nomatron.io) is a deployment control plane for HashiCorp Nomad. It helps platform teams operating Nomad make deployment workflows governed, auditable, and repeatable.
+
+Use this provider to provision organizations, applications, environments, jobs, variables, RBAC objects, GitHub App integrations, Nomad clusters, service accounts, short-lived credentials, and operational actions through the Nomatron API.
 
 Common provider use cases include:
 
@@ -52,4 +54,3 @@ provider "nomatron" {
 - `tls_ca_cert` (String) The path to the TLS CA certificate file.
 - `tls_cert` (String) The path to the TLS certificate file.
 - `tls_key` (String) The path to the TLS key file.
-
