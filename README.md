@@ -1,6 +1,10 @@
 # Terraform Provider for Nomatron
 
-Terraform provider for managing Nomatron resources, lookups, ephemeral secrets, and operational actions.
+The Terraform Provider for Nomatron lets platform teams manage Nomatron resources as code.
+
+Nomatron is a deployment control plane for HashiCorp Nomad. It helps teams operating Nomad make deployment workflows governed, auditable, and repeatable.
+
+Use this provider to configure Nomatron resources through Terraform as part of your platform engineering workflows.
 
 ## Requirements
 
