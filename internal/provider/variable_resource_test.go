@@ -151,7 +151,7 @@ func TestStateFromVariable_NonSensitive(t *testing.T) {
 	description := "Application region"
 	value := "us-west-2"
 
-	state := stateFromVariable(VariableResourceModel{
+	state, diags := stateFromVariable(context.Background(), VariableResourceModel{
 		Scope:   types.StringValue("app"),
 		OrgName: types.StringValue("platform"),
 		AppSlug: types.StringValue("payments"),
@@ -170,6 +170,9 @@ func TestStateFromVariable_NonSensitive(t *testing.T) {
 		Id:    valueID,
 		Value: &value,
 	}, nil)
+	if diags.HasError() {
+		t.Fatalf("state conversion failed: %v", diags)
+	}
 
 	if state.ID.ValueString() != variableID.String() {
 		t.Fatalf("unexpected id: %q", state.ID.ValueString())
@@ -203,7 +206,7 @@ func TestStateFromVariable_SensitiveMasksValue(t *testing.T) {
 	variableID := openapi_types.UUID(uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"))
 	valueID := openapi_types.UUID(uuid.MustParse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"))
 
-	state := stateFromVariable(VariableResourceModel{
+	state, diags := stateFromVariable(context.Background(), VariableResourceModel{
 		Scope: types.StringValue("global"),
 	}, sdk.Variable{
 		Id:          variableID,
@@ -214,6 +217,9 @@ func TestStateFromVariable_SensitiveMasksValue(t *testing.T) {
 	}, &sdk.VariableValue{
 		Id: valueID,
 	}, nil)
+	if diags.HasError() {
+		t.Fatalf("state conversion failed: %v", diags)
+	}
 
 	if !state.Value.IsNull() {
 		t.Fatal("expected sensitive value to be omitted from state")
@@ -307,17 +313,22 @@ func TestStateFromVariable_EnvironmentValues(t *testing.T) {
 	valueID := openapi_types.UUID(uuid.MustParse("cccccccc-cccc-cccc-cccc-cccccccccccc"))
 	envValue := "dev-value"
 
-	state := stateFromVariable(VariableResourceModel{
-		Scope:   types.StringValue("job"),
-		OrgName: types.StringValue("platform"),
-		AppSlug: types.StringValue("payments"),
-		JobSlug: types.StringValue("web"),
-		EnvironmentValues: []VariableEnvironmentValueModel{
-			{
-				EnvironmentSlug: types.StringValue("dev"),
-				Value:           types.StringValue("planned-value"),
-			},
+	envValues, diags := types.ListValueFrom(context.Background(), environmentValueObjectType(), []VariableEnvironmentValueModel{
+		{
+			EnvironmentSlug: types.StringValue("dev"),
+			Value:           types.StringValue("planned-value"),
 		},
+	})
+	if diags.HasError() {
+		t.Fatalf("failed to build environment values: %v", diags)
+	}
+
+	state, diags := stateFromVariable(context.Background(), VariableResourceModel{
+		Scope:             types.StringValue("job"),
+		OrgName:           types.StringValue("platform"),
+		AppSlug:           types.StringValue("payments"),
+		JobSlug:           types.StringValue("web"),
+		EnvironmentValues: envValues,
 	}, sdk.Variable{
 		Id:          variableID,
 		Key:         "region",
@@ -332,10 +343,17 @@ func TestStateFromVariable_EnvironmentValues(t *testing.T) {
 		},
 	})
 
-	if len(state.EnvironmentValues) != 1 {
-		t.Fatalf("unexpected environment value count: %d", len(state.EnvironmentValues))
+	if diags.HasError() {
+		t.Fatalf("state conversion failed: %v", diags)
 	}
-	got := state.EnvironmentValues[0]
+	gotValues, diags := environmentValuesFromList(context.Background(), state.EnvironmentValues)
+	if diags.HasError() {
+		t.Fatalf("failed to read environment values: %v", diags)
+	}
+	if len(gotValues) != 1 {
+		t.Fatalf("unexpected environment value count: %d", len(gotValues))
+	}
+	got := gotValues[0]
 	if got.EnvironmentSlug.ValueString() != "dev" {
 		t.Fatalf("unexpected environment_slug: %q", got.EnvironmentSlug.ValueString())
 	}

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -48,21 +50,21 @@ func NewVariableResource() resource.Resource {
 }
 
 type VariableResourceModel struct {
-	ID                types.String                    `tfsdk:"id"`
-	Scope             types.String                    `tfsdk:"scope"`
-	OrgName           types.String                    `tfsdk:"org_name"`
-	AppSlug           types.String                    `tfsdk:"app_slug"`
-	JobSlug           types.String                    `tfsdk:"job_slug"`
-	Key               types.String                    `tfsdk:"key"`
-	Description       types.String                    `tfsdk:"description"`
-	Sensitive         types.Bool                      `tfsdk:"sensitive"`
-	ValueType         types.String                    `tfsdk:"value_type"`
-	Value             types.String                    `tfsdk:"value"`
-	ValueWO           types.String                    `tfsdk:"value_wo"`
-	ValueID           types.String                    `tfsdk:"value_id"`
-	EnvironmentValues []VariableEnvironmentValueModel `tfsdk:"environment_values"`
-	CreatedAt         types.String                    `tfsdk:"created_at"`
-	UpdatedAt         types.String                    `tfsdk:"updated_at"`
+	ID                types.String `tfsdk:"id"`
+	Scope             types.String `tfsdk:"scope"`
+	OrgName           types.String `tfsdk:"org_name"`
+	AppSlug           types.String `tfsdk:"app_slug"`
+	JobSlug           types.String `tfsdk:"job_slug"`
+	Key               types.String `tfsdk:"key"`
+	Description       types.String `tfsdk:"description"`
+	Sensitive         types.Bool   `tfsdk:"sensitive"`
+	ValueType         types.String `tfsdk:"value_type"`
+	Value             types.String `tfsdk:"value"`
+	ValueWO           types.String `tfsdk:"value_wo"`
+	ValueID           types.String `tfsdk:"value_id"`
+	EnvironmentValues types.List   `tfsdk:"environment_values"`
+	CreatedAt         types.String `tfsdk:"created_at"`
+	UpdatedAt         types.String `tfsdk:"updated_at"`
 }
 
 type VariableEnvironmentValueModel struct {
@@ -280,7 +282,13 @@ func (r *VariableResource) ValidateConfig(ctx context.Context, req resource.Vali
 		resp.Diagnostics.AddAttributeError(path.Root("scope"), "Invalid Scope", "`scope` must be one of `global`, `organization`, `app`, or `job`.")
 	}
 
-	if len(data.EnvironmentValues) > 0 && scope != variableScopeApp && scope != variableScopeJob {
+	envValues, envDiags := environmentValuesFromList(ctx, data.EnvironmentValues)
+	resp.Diagnostics.Append(envDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if !data.EnvironmentValues.IsUnknown() && len(envValues) > 0 && scope != variableScopeApp && scope != variableScopeJob {
 		resp.Diagnostics.AddAttributeError(path.Root("environment_values"), "Invalid Scope Configuration", "`environment_values` can only be set for app or job scoped variables.")
 	}
 
@@ -313,7 +321,7 @@ func (r *VariableResource) ValidateConfig(ctx context.Context, req resource.Vali
 		resp.Diagnostics.AddAttributeError(path.Root("value_wo"), "Invalid Non-Sensitive Value Configuration", "Non-sensitive variables must use `value` so the default value is tracked in Terraform state.")
 	}
 
-	for i, envValue := range data.EnvironmentValues {
+	for i, envValue := range envValues {
 		envPath := path.Root("environment_values").AtListIndex(i)
 		if attributeIsSet(envValue.Value) && attributeIsSet(envValue.ValueWO) {
 			resp.Diagnostics.AddAttributeError(envPath.AtName("value"), "Invalid Environment Value Configuration", "Only one of `value` or `value_wo` can be set.")
@@ -409,7 +417,11 @@ func (r *VariableResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	state := stateFromVariable(plan, variableRecord, defaultRow, envValues)
+	state, stateDiags := stateFromVariable(ctx, plan, variableRecord, defaultRow, envValues)
+	resp.Diagnostics.Append(stateDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	if hasDefault && !plan.Sensitive.ValueBool() {
 		state.Value = types.StringValue(defaultValue)
 	}
@@ -458,7 +470,11 @@ func (r *VariableResource) Read(ctx context.Context, req resource.ReadRequest, r
 		return
 	}
 
-	newState := stateFromVariable(state, variableRecord, defaultRow, envRows)
+	newState, stateDiags := stateFromVariable(ctx, state, variableRecord, defaultRow, envRows)
+	resp.Diagnostics.Append(stateDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &newState)...)
 }
 
@@ -539,7 +555,11 @@ func (r *VariableResource) Update(ctx context.Context, req resource.UpdateReques
 		return
 	}
 
-	newState := stateFromVariable(plan, variableRecord, defaultRow, envRows)
+	newState, stateDiags := stateFromVariable(ctx, plan, variableRecord, defaultRow, envRows)
+	resp.Diagnostics.Append(stateDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	if hasDefault && !plan.Sensitive.ValueBool() {
 		newState.Value = types.StringValue(defaultValue)
 	}
@@ -668,13 +688,53 @@ func configuredVariableEnvironmentValue(planEnv, configEnv VariableEnvironmentVa
 	return "", false
 }
 
-func matchingConfiguredEnvironmentValue(config VariableResourceModel, planEnv VariableEnvironmentValueModel) VariableEnvironmentValueModel {
-	for _, configEnv := range config.EnvironmentValues {
+func matchingConfiguredEnvironmentValue(configEnvs []VariableEnvironmentValueModel, planEnv VariableEnvironmentValueModel) VariableEnvironmentValueModel {
+	for _, configEnv := range configEnvs {
 		if configEnv.EnvironmentSlug.ValueString() == planEnv.EnvironmentSlug.ValueString() {
 			return configEnv
 		}
 	}
 	return VariableEnvironmentValueModel{}
+}
+
+func environmentValueObjectType() types.ObjectType {
+	return types.ObjectType{
+		AttrTypes: map[string]attr.Type{
+			"environment_slug": types.StringType,
+			"environment_id":   types.StringType,
+			"value":            types.StringType,
+			"value_wo":         types.StringType,
+			"value_id":         types.StringType,
+		},
+	}
+}
+
+func environmentValuesFromList(ctx context.Context, list types.List) ([]VariableEnvironmentValueModel, diag.Diagnostics) {
+	if list.ElementType(ctx) == nil || list.IsNull() || list.IsUnknown() {
+		return nil, nil
+	}
+	var values []VariableEnvironmentValueModel
+	diags := list.ElementsAs(ctx, &values, false)
+	return values, diags
+}
+
+func environmentValuesToList(ctx context.Context, values []VariableEnvironmentValueModel) (types.List, diag.Diagnostics) {
+	elementType := environmentValueObjectType()
+	if len(values) == 0 {
+		return types.ListNull(elementType), nil
+	}
+	return types.ListValueFrom(ctx, elementType, values)
+}
+
+func knownEnvironmentValues(ctx context.Context, list types.List) ([]VariableEnvironmentValueModel, error) {
+	if list.IsUnknown() {
+		return nil, fmt.Errorf("environment_values is unknown")
+	}
+	values, diags := environmentValuesFromList(ctx, list)
+	if diags.HasError() {
+		return nil, fmt.Errorf("failed to read environment_values: %v", diags)
+	}
+	return values, nil
 }
 
 func parseVariableImportID(raw string) (scope, orgName, appSlug, jobSlug, variableID string, err error) {
@@ -1018,13 +1078,21 @@ func upsertVariableDefaultValueByScope(ctx context.Context, client *sdk.ClientWi
 
 func upsertConfiguredVariableEnvironmentValues(ctx context.Context, client *sdk.ClientWithResponses, plan, config VariableResourceModel, variableID openapi_types.UUID) ([]sdk.VariableValue, error) {
 	scope := normalizeVariableScope(plan.Scope.ValueString())
-	if (scope != variableScopeApp && scope != variableScopeJob) || len(plan.EnvironmentValues) == 0 {
+	planEnvs, err := knownEnvironmentValues(ctx, plan.EnvironmentValues)
+	if err != nil {
+		return nil, err
+	}
+	configEnvs, err := knownEnvironmentValues(ctx, config.EnvironmentValues)
+	if err != nil {
+		return nil, err
+	}
+	if (scope != variableScopeApp && scope != variableScopeJob) || len(planEnvs) == 0 {
 		return nil, nil
 	}
 
-	rows := make([]sdk.VariableValue, 0, len(plan.EnvironmentValues))
-	for _, planEnv := range plan.EnvironmentValues {
-		configEnv := matchingConfiguredEnvironmentValue(config, planEnv)
+	rows := make([]sdk.VariableValue, 0, len(planEnvs))
+	for _, planEnv := range planEnvs {
+		configEnv := matchingConfiguredEnvironmentValue(configEnvs, planEnv)
 		value, ok := configuredVariableEnvironmentValue(planEnv, configEnv, plan.Sensitive.ValueBool())
 		if !ok {
 			continue
@@ -1080,12 +1148,16 @@ func upsertVariableEnvironmentValue(ctx context.Context, client *sdk.ClientWithR
 
 func listConfiguredVariableEnvironmentValues(ctx context.Context, client *sdk.ClientWithResponses, data VariableResourceModel, variableID openapi_types.UUID) ([]sdk.VariableValue, error) {
 	scope := normalizeVariableScope(data.Scope.ValueString())
-	if (scope != variableScopeApp && scope != variableScopeJob) || len(data.EnvironmentValues) == 0 {
+	envValues, err := knownEnvironmentValues(ctx, data.EnvironmentValues)
+	if err != nil {
+		return nil, err
+	}
+	if (scope != variableScopeApp && scope != variableScopeJob) || len(envValues) == 0 {
 		return nil, nil
 	}
 
-	rows := make([]sdk.VariableValue, 0, len(data.EnvironmentValues))
-	for _, envValue := range data.EnvironmentValues {
+	rows := make([]sdk.VariableValue, 0, len(envValues))
+	for _, envValue := range envValues {
 		if !attributeIsSet(envValue.EnvironmentSlug) {
 			continue
 		}
@@ -1134,12 +1206,21 @@ func deleteRemovedVariableEnvironmentValues(ctx context.Context, client *sdk.Cli
 		return nil
 	}
 
+	planEnvs, err := knownEnvironmentValues(ctx, plan.EnvironmentValues)
+	if err != nil {
+		return err
+	}
+	stateEnvs, err := knownEnvironmentValues(ctx, state.EnvironmentValues)
+	if err != nil {
+		return err
+	}
+
 	planned := map[string]struct{}{}
-	for _, envValue := range plan.EnvironmentValues {
+	for _, envValue := range planEnvs {
 		planned[envValue.EnvironmentSlug.ValueString()] = struct{}{}
 	}
 
-	for _, envValue := range state.EnvironmentValues {
+	for _, envValue := range stateEnvs {
 		if _, ok := planned[envValue.EnvironmentSlug.ValueString()]; ok {
 			continue
 		}
@@ -1185,7 +1266,7 @@ func deleteVariableEnvironmentValue(ctx context.Context, client *sdk.ClientWithR
 	return nil
 }
 
-func stateFromVariable(base VariableResourceModel, variableRecord sdk.Variable, defaultRow *sdk.VariableValue, envRows []sdk.VariableValue) VariableResourceModel {
+func stateFromVariable(ctx context.Context, base VariableResourceModel, variableRecord sdk.Variable, defaultRow *sdk.VariableValue, envRows []sdk.VariableValue) (VariableResourceModel, diag.Diagnostics) {
 	description := types.StringNull()
 	if variableRecord.Description != nil {
 		description = types.StringValue(*variableRecord.Description)
@@ -1217,7 +1298,7 @@ func stateFromVariable(base VariableResourceModel, variableRecord sdk.Variable, 
 		valueID = base.ValueID
 	}
 
-	envValues := stateFromVariableEnvironmentValues(base, variableRecord, envRows)
+	envValues, envDiags := stateFromVariableEnvironmentValues(ctx, base, variableRecord, envRows)
 
 	createdAt := types.StringNull()
 	if !variableRecord.CreatedAt.IsZero() {
@@ -1250,12 +1331,23 @@ func stateFromVariable(base VariableResourceModel, variableRecord sdk.Variable, 
 		EnvironmentValues: envValues,
 		CreatedAt:         createdAt,
 		UpdatedAt:         updatedAt,
-	}
+	}, envDiags
 }
 
-func stateFromVariableEnvironmentValues(base VariableResourceModel, variableRecord sdk.Variable, envRows []sdk.VariableValue) []VariableEnvironmentValueModel {
-	if len(base.EnvironmentValues) == 0 {
-		return nil
+func stateFromVariableEnvironmentValues(ctx context.Context, base VariableResourceModel, variableRecord sdk.Variable, envRows []sdk.VariableValue) (types.List, diag.Diagnostics) {
+	if base.EnvironmentValues.ElementType(ctx) == nil || base.EnvironmentValues.IsNull() {
+		return types.ListNull(environmentValueObjectType()), nil
+	}
+	if base.EnvironmentValues.IsUnknown() {
+		return base.EnvironmentValues, nil
+	}
+
+	baseEnvs, diags := environmentValuesFromList(ctx, base.EnvironmentValues)
+	if diags.HasError() || len(baseEnvs) == 0 {
+		if len(baseEnvs) == 0 && !diags.HasError() {
+			return types.ListNull(environmentValueObjectType()), nil
+		}
+		return types.ListNull(environmentValueObjectType()), diags
 	}
 
 	byKey := make(map[string]sdk.VariableValue, len(envRows)*2)
@@ -1266,8 +1358,8 @@ func stateFromVariableEnvironmentValues(base VariableResourceModel, variableReco
 		byKey["value:"+row.Id.String()] = row
 	}
 
-	out := make([]VariableEnvironmentValueModel, 0, len(base.EnvironmentValues))
-	for i, baseEnv := range base.EnvironmentValues {
+	out := make([]VariableEnvironmentValueModel, 0, len(baseEnvs))
+	for i, baseEnv := range baseEnvs {
 		var row sdk.VariableValue
 		var ok bool
 		if attributeIsSet(baseEnv.EnvironmentID) {
@@ -1310,5 +1402,5 @@ func stateFromVariableEnvironmentValues(base VariableResourceModel, variableReco
 			ValueID:         types.StringValue(row.Id.String()),
 		})
 	}
-	return out
+	return environmentValuesToList(ctx, out)
 }
