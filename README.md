@@ -153,7 +153,6 @@ Common patterns:
 - Name-based imports:
   - `nomatron_organization`: organization name
   - `nomatron_role`: role name
-  - `nomatron_role`: role name
 
 - Scoped imports:
   - `nomatron_application`: `org_name/app_slug`
