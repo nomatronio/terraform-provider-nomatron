@@ -150,7 +150,9 @@ Common patterns:
   - `nomatron_user`
   - `nomatron_service_account`
   - `nomatron_role`
-  - `nomatron_organization`
+
+- Name-based imports:
+  - `nomatron_organization`: organization name
 
 - Scoped imports:
   - `nomatron_application`: `org_name/app_slug`
@@ -169,6 +171,7 @@ Examples:
 
 ```hcl
 terraform import nomatron_agent.example aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+terraform import nomatron_organization.example platform
 terraform import nomatron_application.example platform/payments
 terraform import nomatron_environment.example platform/payments/prod
 terraform import nomatron_variable.example job/platform/payments/web/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa

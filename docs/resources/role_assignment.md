@@ -27,9 +27,9 @@ resource "nomatron_role_assignment" "example" {
 
 ### Required
 
-- `domain` (String) Role domain or scope, such as global or organization:<uuid>.
+- `domain` (String) Role domain or scope, such as global or org:<uuid>.
 - `role` (String) Role name to assign.
-- `subject` (String) Assignment subject, typically in the form user:<uuid> or service-account:<uuid>.
+- `subject` (String) Assignment subject, typically in the form user:<uuid> or service_account:<uuid>.
 
 ### Read-Only
 

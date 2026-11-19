@@ -47,7 +47,7 @@ func (r *RoleAssignmentResource) Schema(ctx context.Context, req resource.Schema
 			},
 			"subject": schema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: "Assignment subject, typically in the form user:<uuid> or service-account:<uuid>.",
+				MarkdownDescription: "Assignment subject, typically in the form user:<uuid> or service_account:<uuid>.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -61,7 +61,7 @@ func (r *RoleAssignmentResource) Schema(ctx context.Context, req resource.Schema
 			},
 			"domain": schema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: "Role domain or scope, such as global or organization:<uuid>.",
+				MarkdownDescription: "Role domain or scope, such as global or org:<uuid>.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
