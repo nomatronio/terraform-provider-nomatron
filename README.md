@@ -149,10 +149,10 @@ Common patterns:
   - `nomatron_agent`
   - `nomatron_user`
   - `nomatron_service_account`
-  - `nomatron_role`
 
 - Name-based imports:
   - `nomatron_organization`: organization name
+  - `nomatron_role`: role name
 
 - Scoped imports:
   - `nomatron_application`: `org_name/app_slug`
