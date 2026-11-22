@@ -1,8 +1,8 @@
 # Risk paths for the software-factory checker.
-# Highest matching tier wins. A file that matches nothing is low.
-# Editing this file, the checker, the state-compatibility rule or the
-# risk-tier workflow is forced high in .factory/risk_tier.py so this list
-# cannot quietly demote itself.
+# Highest matching tier wins. A file that matches nothing is medium.
+# Editing this file, the checker, the state-compatibility rule, the
+# security-review skill or the risk-tier workflow is forced high in
+# .factory/risk_tier.py so this list cannot quietly demote itself.
 #
 # tier  glob
 
@@ -11,6 +11,12 @@
 # state compatibility.
 high .github/**
 high goreleaser.yml
+high goreleaser.yaml
+high .goreleaser.y*ml
+high .config/**
+high go.work
+high go.work.sum
+high vendor/**
 high terraform-registry-manifest.json
 high go.mod
 high go.sum
@@ -23,19 +29,19 @@ high AGENTS.md
 high SECURITY.md
 
 # Medium: resource and data source behaviour, actions, ephemeral resources,
-# and the generated docs that describe them.
+# tests, generated docs, agent skills and editor rules.
 medium internal/provider/*_resource.go
 medium internal/provider/*_data_source.go
 medium internal/provider/*_action.go
 medium internal/provider/destroy_action_helpers.go
 medium internal/provider/*_ephemeral_resource.go
+medium internal/provider/*_test.go
 medium GNUmakefile
 medium docs/**
 medium templates/**
+medium .agents/**
+medium .cursor/**
 
-# Low: tests, examples, README, agent skills and editor rules.
-low internal/provider/*_test.go
+# Low: examples and README.
 low examples/**
 low README.md
-low .agents/**
-low .cursor/**

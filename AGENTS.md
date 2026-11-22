@@ -40,11 +40,11 @@ Terraform state is the user's data. Changing an attribute, an ID or an import fo
 
 ## Risk tiers
 
-`.factory/risk-paths.txt` is the path list; `.factory/risk_tier.py` classifies a change. Highest match wins. Unmatched files are low.
+`.factory/risk-paths.txt` is the path list; `.factory/risk_tier.py` classifies a change. Highest match wins. Unmatched files are medium.
 
-- **Low.** Tests, examples, README, skills, rules.
-- **Medium.** Resource, data source, action and ephemeral resource behaviour; generated docs.
-- **High.** Provider configuration and authentication, workflows, release and signing files, `go.mod`, `go.sum`, `.factory/`, anything that changes state compatibility.
+- **Low.** Examples and README.
+- **Medium.** Resource, data source, action and ephemeral resource behaviour; tests; generated docs; agent skills and editor rules, except the security-review skill.
+- **High.** Provider configuration and authentication, workflows, release and signing files, dependency pins (`go.mod`, `go.sum`, `go.work`, `vendor/`), `.config/`, `.factory/`, the security-review skill, anything that changes state compatibility.
 
 Merge policy: `.factory/merge-policy.md`.
 
