@@ -1,6 +1,8 @@
 # Merge policy
 
-This is the intended policy. GitHub does not enforce it yet. The risk-tier check, when added, only reports a tier and sets a label; it does not turn on auto-merge or change branch protection.
+This is the intended policy. This is the merge policy for this repository. The risk-tier check, when added, only reports a tier and sets a label; it does not turn on auto-merge or change branch protection.
+
+A future CI workflow must run the checker from the base branch's `.factory/`, take only file names from the pull request, and never use `pull_request_target` with a checkout of the pull request's code.
 
 ## Reviews
 
@@ -8,7 +10,6 @@ This is the intended policy. GitHub does not enforce it yet. The risk-tier check
 - **Codex Security Review** is on for pull requests. Its result must be clear before any merge, at every tier. For `risk:medium` and `risk:high`, the opener also comments exactly `@codex security review` once the pull request is ready for review, and again after any substantial new push. An empty result is not a clean pass: read the report before treating the review as finished.
 - **Security reviewer:** medium and high pull requests also get a human or security-bot review of the final commit before merge.
 - **QA** tests release candidates, not individual merges. It is not a per-pull-request merge condition.
-- Do not enable repository-wide security scans or continuous monitoring that bill separately.
 
 ## Low
 

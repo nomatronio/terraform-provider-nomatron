@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Classify a change set against .factory/risk-paths.txt.
 
-Highest matching tier wins. Unmatched files are low. Changes to the path
-list or this checker stay high even if the path list says otherwise.
+Highest matching tier wins. Unmatched files are medium. Changes to the path
+list, this checker, or the security-review skill stay high even if the path
+list says otherwise.
 This script never merges a pull request.
 """
 
@@ -19,7 +20,8 @@ DEFAULT_PATHS = ROOT / ".factory" / "risk-paths.txt"
 TIERS = ("low", "medium", "high")
 RANK = {name: index for index, name in enumerate(TIERS)}
 
-# The path list must not be able to demote a change to itself or the checker.
+# The path list must not be able to demote a change to itself, the checker,
+# or the security-review skill. Entries may be exact paths or globs.
 FORCED_HIGH = frozenset(
     {
         ".factory/risk-paths.txt",
@@ -27,8 +29,11 @@ FORCED_HIGH = frozenset(
         ".factory/risk_tier_test.py",
         ".factory/state-compatibility.md",
         ".github/workflows/risk-tier.yml",
+        ".agents/skills/security-review/**",
     }
 )
+
+SHA_RE = re.compile(r"^[0-9a-fA-F]{40}$")
 
 SUMMARY_LIMIT = 25
 
@@ -58,6 +63,17 @@ def glob_to_regex(pattern: str) -> re.Pattern[str]:
     return re.compile("".join(parts))
 
 
+def is_forced_high(path: str) -> bool:
+    """True when checker policy forces this path high, including globs."""
+    for entry in FORCED_HIGH:
+        if "*" in entry or "?" in entry:
+            if glob_to_regex(entry).search(path):
+                return True
+        elif entry == path:
+            return True
+    return False
+
+
 def load_rules(text: str) -> list[tuple[str, re.Pattern[str], str]]:
     rules: list[tuple[str, re.Pattern[str], str]] = []
     for line_number, raw in enumerate(text.splitlines(), start=1):
@@ -85,11 +101,11 @@ def best_rule(
             rank = RANK[tier]
             if winner is None or rank > winner[0]:
                 winner = (rank, tier, glob)
-    if path in FORCED_HIGH and (winner is None or winner[0] < RANK["high"]):
+    if is_forced_high(path) and (winner is None or winner[0] < RANK["high"]):
         return ("high", "checker policy file; tier forced high")
     if winner is None:
         return None
-    if path in FORCED_HIGH:
+    if is_forced_high(path):
         return ("high", f"matched `{winner[2]}` and checker policy forces high")
     return (winner[1], f"matched `{winner[2]}`")
 
@@ -108,9 +124,9 @@ def classify(
             continue
         match = best_rule(cleaned, rules)
         if match is None:
-            rows.append((cleaned, "low", "no rule matched"))
-            continue
-        tier, reason = match
+            tier, reason = "medium", "no rule matched"
+        else:
+            tier, reason = match
         rows.append((cleaned, tier, reason))
         if RANK[tier] > RANK[overall]:
             overall = tier
@@ -118,24 +134,44 @@ def classify(
 
 
 def parse_name_status(text: str) -> list[str]:
-    """Collect every path from `git diff --name-status`, including rename ends."""
+    """Collect every path from `git diff --name-status -z`.
+
+    Records are NUL-separated, so quotes and newlines in a path stay intact.
+    A rename or copy lists the old path and the new path; both are returned.
+    """
+    parts = text.split("\0")
+    if parts and parts[-1] == "":
+        parts.pop()
     found: list[str] = []
-    for line in text.splitlines():
-        if not line.strip():
+    index = 0
+    while index < len(parts):
+        status = parts[index]
+        if status.startswith(("R", "C")):
+            if index + 2 >= len(parts):
+                raise SystemExit("git diff name-status: truncated rename")
+            found.append(parts[index + 1])
+            found.append(parts[index + 2])
+            index += 3
             continue
-        columns = line.split("\t")
-        status = columns[0]
-        # Renames and copies list the old path and the new path.
-        if status.startswith(("R", "C")) and len(columns) >= 3:
-            found.extend(columns[1:])
-        else:
-            found.append(columns[-1])
+        if index + 1 >= len(parts):
+            raise SystemExit("git diff name-status: truncated record")
+        found.append(parts[index + 1])
+        index += 2
     return found
 
 
 def changed_files(base: str, head: str) -> list[str]:
     proc = subprocess.run(
-        ["git", "diff", "--name-status", "--find-renames", base, head],
+        [
+            "git",
+            "diff",
+            "--name-status",
+            "-z",
+            "--find-renames",
+            "--end-of-options",
+            base,
+            head,
+        ],
         cwd=ROOT,
         check=False,
         capture_output=True,
@@ -181,6 +217,21 @@ def write_summary(tier: str, rows: list[tuple[str, str, str]]) -> None:
             handle.write(text)
 
 
+def validate_sha(name: str, value: str) -> None:
+    """Reject anything other than a full 40-character hex object name."""
+    if SHA_RE.fullmatch(value) is None:
+        raise SystemExit(f"{name} must be exactly 40 hex characters")
+
+
+def validate_file_arg(path: str) -> None:
+    """Reject absolute paths and any path that climbs with '..'."""
+    if os.path.isabs(path) or path.startswith(("/", "\\")):
+        raise SystemExit(f"refusing absolute path: {path}")
+    parts = re.split(r"[/\\]", path)
+    if ".." in parts:
+        raise SystemExit(f"refusing path that contains '..': {path}")
+
+
 def main(argv: list[str]) -> int:
     paths_file = DEFAULT_PATHS
     files: list[str] | None = None
@@ -202,9 +253,12 @@ def main(argv: list[str]) -> int:
     if files is None:
         base = os.environ.get("BASE_SHA", "")
         head = os.environ.get("HEAD_SHA", "")
-        if not base or not head:
-            raise SystemExit("BASE_SHA and HEAD_SHA are required (or pass --files)")
+        validate_sha("BASE_SHA", base)
+        validate_sha("HEAD_SHA", head)
         files = changed_files(base, head)
+    else:
+        for path in files:
+            validate_file_arg(path)
 
     tier, rows = classify(files, rules)
     write_output("tier", tier)
