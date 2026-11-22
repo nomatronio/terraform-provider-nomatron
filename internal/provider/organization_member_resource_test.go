@@ -92,8 +92,8 @@ func TestOrganizationMemberResource_ConfigureWrongType(t *testing.T) {
 func TestBuildOrganizationMemberID(t *testing.T) {
 	t.Parallel()
 
-	got := buildOrganizationMemberID("platform", "rbarnes")
-	want := "org_name=platform&username=rbarnes"
+	got := buildOrganizationMemberID("platform", "jdoe")
+	want := "org_name=platform&username=jdoe"
 
 	if got != want {
 		t.Fatalf("unexpected id: got %q want %q", got, want)
@@ -103,7 +103,7 @@ func TestBuildOrganizationMemberID(t *testing.T) {
 func TestParseOrganizationMemberID(t *testing.T) {
 	t.Parallel()
 
-	orgName, username, err := parseOrganizationMemberID("org_name=platform&username=rbarnes")
+	orgName, username, err := parseOrganizationMemberID("org_name=platform&username=jdoe")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestParseOrganizationMemberID(t *testing.T) {
 	if orgName != "platform" {
 		t.Fatalf("unexpected org_name: %q", orgName)
 	}
-	if username != "rbarnes" {
+	if username != "jdoe" {
 		t.Fatalf("unexpected username: %q", username)
 	}
 }
@@ -132,18 +132,18 @@ func TestStateFromOrganizationMember(t *testing.T) {
 
 	base := OrganizationMemberResourceModel{
 		OrgName:  types.StringValue("platform"),
-		Username: types.StringValue("rbarnes"),
+		Username: types.StringValue("jdoe"),
 	}
 
 	member := sdk.OrganizationMember{
-		Username: "rbarnes",
+		Username: "jdoe",
 		UserId:   userID,
 		JoinedAt: joinedAt,
 	}
 
 	state := stateFromOrganizationMember(base, member)
 
-	if state.ID.ValueString() != "org_name=platform&username=rbarnes" {
+	if state.ID.ValueString() != "org_name=platform&username=jdoe" {
 		t.Fatalf("unexpected id: %q", state.ID.ValueString())
 	}
 	if state.UserID.ValueString() != userID.String() {
@@ -157,7 +157,7 @@ func TestStateFromOrganizationMember(t *testing.T) {
 func TestOrganizationMemberNotFoundError(t *testing.T) {
 	t.Parallel()
 
-	err := &organizationMemberNotFoundError{orgName: "platform", username: "rbarnes"}
+	err := &organizationMemberNotFoundError{orgName: "platform", username: "jdoe"}
 	if !isOrganizationMemberNotFound(err) {
 		t.Fatal("expected organizationMemberNotFoundError to be recognized")
 	}

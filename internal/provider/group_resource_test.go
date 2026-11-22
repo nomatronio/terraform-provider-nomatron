@@ -110,7 +110,7 @@ func TestStateFromGroup(t *testing.T) {
 
 	base := GroupResourceModel{
 		OrgName:       types.StringValue("platform"),
-		OwnerUsername: types.StringValue("rbarnes"),
+		OwnerUsername: types.StringValue("jdoe"),
 	}
 
 	group := sdk.Group{
@@ -153,7 +153,7 @@ func TestStateFromGroup_PreservesOptionalFieldsWhenMissing(t *testing.T) {
 		OrgName:       types.StringValue("platform"),
 		Description:   types.StringValue("preserve me"),
 		Metadata:      types.MapValueMust(types.StringType, map[string]attr.Value{"team": types.StringValue("platform")}),
-		OwnerUsername: types.StringValue("rbarnes"),
+		OwnerUsername: types.StringValue("jdoe"),
 	}
 
 	group := sdk.Group{
@@ -173,7 +173,7 @@ func TestStateFromGroup_PreservesOptionalFieldsWhenMissing(t *testing.T) {
 	if state.Description.ValueString() != "preserve me" {
 		t.Fatalf("unexpected description: %q", state.Description.ValueString())
 	}
-	if state.OwnerUsername.ValueString() != "rbarnes" {
+	if state.OwnerUsername.ValueString() != "jdoe" {
 		t.Fatalf("unexpected owner_username: %q", state.OwnerUsername.ValueString())
 	}
 }

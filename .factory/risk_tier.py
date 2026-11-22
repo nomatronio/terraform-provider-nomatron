@@ -39,7 +39,12 @@ SUMMARY_LIMIT = 25
 
 
 def glob_to_regex(pattern: str) -> re.Pattern[str]:
-    """Translate a path glob. `**` crosses directories; `*` does not."""
+    """Translate a path glob. `**` crosses directories; `*` does not.
+
+    Matching is case-insensitive: the pattern is lowercased before it is compiled.
+    Callers lowercase the path before searching.
+    """
+    pattern = pattern.lower()
     parts: list[str] = ["^"]
     index = 0
     while index < len(pattern):
@@ -64,12 +69,17 @@ def glob_to_regex(pattern: str) -> re.Pattern[str]:
 
 
 def is_forced_high(path: str) -> bool:
-    """True when checker policy forces this path high, including globs."""
+    """True when checker policy forces this path high, including globs.
+
+    The path and each policy entry are compared case-insensitively.
+    """
+    lowered = path.lower()
     for entry in FORCED_HIGH:
-        if "*" in entry or "?" in entry:
-            if glob_to_regex(entry).search(path):
+        folded = entry.lower()
+        if "*" in folded or "?" in folded:
+            if glob_to_regex(folded).search(lowered):
                 return True
-        elif entry == path:
+        elif folded == lowered:
             return True
     return False
 
@@ -96,8 +106,9 @@ def best_rule(
     path: str, rules: list[tuple[str, re.Pattern[str], str]]
 ) -> tuple[str, str] | None:
     winner: tuple[int, str, str] | None = None
+    lowered = path.lower()
     for tier, pattern, glob in rules:
-        if pattern.search(path):
+        if pattern.search(lowered):
             rank = RANK[tier]
             if winner is None or rank > winner[0]:
                 winner = (rank, tier, glob)

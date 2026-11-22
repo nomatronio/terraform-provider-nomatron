@@ -106,7 +106,7 @@ func TestStateFromOrganization(t *testing.T) {
 	}
 
 	base := OrganizationResourceModel{
-		OwnerUsername: types.StringValue("rbarnes"),
+		OwnerUsername: types.StringValue("jdoe"),
 	}
 
 	org := sdk.Organization{
@@ -133,7 +133,7 @@ func TestStateFromOrganization(t *testing.T) {
 	if state.Description.ValueString() != description {
 		t.Fatalf("unexpected description: %q", state.Description.ValueString())
 	}
-	if state.OwnerUsername.ValueString() != "rbarnes" {
+	if state.OwnerUsername.ValueString() != "jdoe" {
 		t.Fatalf("unexpected owner_username: %q", state.OwnerUsername.ValueString())
 	}
 	if state.OwnerUserID.ValueString() != ownerUserID.String() {
@@ -153,7 +153,7 @@ func TestStateFromOrganization_PreservesOptionalFieldsWhenMissing(t *testing.T) 
 	base := OrganizationResourceModel{
 		Description:   types.StringValue("preserve me"),
 		Metadata:      types.MapValueMust(types.StringType, map[string]attr.Value{"team": types.StringValue("platform")}),
-		OwnerUsername: types.StringValue("rbarnes"),
+		OwnerUsername: types.StringValue("jdoe"),
 	}
 
 	state, diags := stateFromOrganization(base, sdk.Organization{
@@ -170,7 +170,7 @@ func TestStateFromOrganization_PreservesOptionalFieldsWhenMissing(t *testing.T) 
 	if state.Description.ValueString() != "preserve me" {
 		t.Fatalf("unexpected description: %q", state.Description.ValueString())
 	}
-	if state.OwnerUsername.ValueString() != "rbarnes" {
+	if state.OwnerUsername.ValueString() != "jdoe" {
 		t.Fatalf("unexpected owner_username: %q", state.OwnerUsername.ValueString())
 	}
 }

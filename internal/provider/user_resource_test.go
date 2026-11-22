@@ -163,8 +163,8 @@ func TestStateFromUser_WithMetadataAndUUIDCreatedBy(t *testing.T) {
 
 	user := sdk.User{
 		Id:           userID,
-		Username:     "rbarnes",
-		Name:         "Robert Barnes",
+		Username:     "jdoe",
+		Name:         "Jane Doe",
 		AuthProvider: "nomatron",
 		IsActive:     true,
 		CreatedAt:    createdAt,
@@ -180,10 +180,10 @@ func TestStateFromUser_WithMetadataAndUUIDCreatedBy(t *testing.T) {
 	if state.ID.ValueString() != "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" {
 		t.Fatalf("unexpected id: %q", state.ID.ValueString())
 	}
-	if state.Username.ValueString() != "rbarnes" {
+	if state.Username.ValueString() != "jdoe" {
 		t.Fatalf("unexpected username: %q", state.Username.ValueString())
 	}
-	if state.Name.ValueString() != "Robert Barnes" {
+	if state.Name.ValueString() != "Jane Doe" {
 		t.Fatalf("unexpected name: %q", state.Name.ValueString())
 	}
 	if state.PasswordWO.ValueString() != "super-secret" {

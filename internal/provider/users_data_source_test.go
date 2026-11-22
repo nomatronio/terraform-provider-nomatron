@@ -165,13 +165,13 @@ func TestFlattenUser_WithMetadata(t *testing.T) {
 
 	metadata := map[string]string{
 		"team":  "platform",
-		"owner": "rbarnes",
+		"owner": "jdoe",
 	}
 
 	u := sdk.User{
 		Id:           userID,
-		Name:         "Robert Barnes",
-		Username:     "rbarnes",
+		Name:         "Jane Doe",
+		Username:     "jdoe",
 		IsActive:     true,
 		AuthProvider: "local",
 		CreatedAt:    createdAt,
@@ -193,8 +193,8 @@ func TestFlattenUser_WithMetadata(t *testing.T) {
 		userAttrTypes(),
 		map[string]attr.Value{
 			"id":            types.StringValue("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-			"name":          types.StringValue("Robert Barnes"),
-			"username":      types.StringValue("rbarnes"),
+			"name":          types.StringValue("Jane Doe"),
+			"username":      types.StringValue("jdoe"),
 			"is_active":     types.BoolValue(true),
 			"auth_provider": types.StringValue("local"),
 			"created_at":    types.StringValue(createdAt.Format(time.RFC3339)),
