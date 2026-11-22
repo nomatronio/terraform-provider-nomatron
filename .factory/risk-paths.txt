@@ -1,0 +1,41 @@
+# Risk paths for the software-factory checker.
+# Highest matching tier wins. A file that matches nothing is low.
+# Editing this file, the checker, the state-compatibility rule or the
+# risk-tier workflow is forced high in .factory/risk_tier.py so this list
+# cannot quietly demote itself.
+#
+# tier  glob
+
+# High: CI trust, release and signing, dependency pins, provider
+# configuration and authentication, and anything that can change Terraform
+# state compatibility.
+high .github/**
+high goreleaser.yml
+high terraform-registry-manifest.json
+high go.mod
+high go.sum
+high main.go
+high internal/provider/provider.go
+high internal/provider/client.go
+high internal/provider/string_plan_modifiers.go
+high .factory/**
+high AGENTS.md
+high SECURITY.md
+
+# Medium: resource and data source behaviour, actions, ephemeral resources,
+# and the generated docs that describe them.
+medium internal/provider/*_resource.go
+medium internal/provider/*_data_source.go
+medium internal/provider/*_action.go
+medium internal/provider/destroy_action_helpers.go
+medium internal/provider/*_ephemeral_resource.go
+medium GNUmakefile
+medium docs/**
+medium templates/**
+
+# Low: tests, examples, README, agent skills and editor rules.
+low internal/provider/*_test.go
+low examples/**
+low README.md
+low .agents/**
+low .cursor/**

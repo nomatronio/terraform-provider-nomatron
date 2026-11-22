@@ -1,0 +1,11 @@
+---
+description: Terraform state compatibility. Read before changing any schema, ID, import or read-matching logic.
+globs: internal/provider/*_resource.go,internal/provider/*_data_source.go,internal/provider/*_action.go
+alwaysApply: false
+---
+
+- Read `.factory/state-compatibility.md` first.
+- Do not remove or rename attributes, change types, add RequiresReplace, change a default, or change the ID or import format. Each is a breaking change.
+- A fix to a read that keeps IDs and state shape unchanged is not breaking. Prove that with a test.
+- A breaking change needs `Breaking: yes` on the ticket, an owner decision, and a MAJOR semver bump at release. Stop and report instead of proceeding.
+- Never run `apply`, `destroy` or state commands against a real environment.
