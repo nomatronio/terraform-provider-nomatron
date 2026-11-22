@@ -116,11 +116,11 @@ func TestFlattenOrganizationMemberDataSource(t *testing.T) {
 
 	base := OrganizationMemberDataSourceModel{
 		OrgName:  types.StringValue("platform"),
-		Username: types.StringValue("rbarnes"),
+		Username: types.StringValue("jdoe"),
 	}
 
 	member := sdk.OrganizationMember{
-		Username: "rbarnes",
+		Username: "jdoe",
 		UserId:   userID,
 		JoinedAt: joinedAt,
 	}
@@ -130,7 +130,7 @@ func TestFlattenOrganizationMemberDataSource(t *testing.T) {
 	if data.OrgName.ValueString() != "platform" {
 		t.Fatalf("unexpected org_name: %q", data.OrgName.ValueString())
 	}
-	if data.Username.ValueString() != "rbarnes" {
+	if data.Username.ValueString() != "jdoe" {
 		t.Fatalf("unexpected username: %q", data.Username.ValueString())
 	}
 	if data.UserID.ValueString() != userID.String() {
@@ -146,7 +146,7 @@ func TestFlattenOrganizationMemberDataSource_WithNullOptionalFields(t *testing.T
 
 	base := OrganizationMemberDataSourceModel{
 		OrgName:  types.StringValue("platform"),
-		Username: types.StringValue("rbarnes"),
+		Username: types.StringValue("jdoe"),
 	}
 
 	data := flattenOrganizationMemberDataSource(base, sdk.OrganizationMember{})

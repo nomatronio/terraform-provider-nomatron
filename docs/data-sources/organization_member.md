@@ -15,7 +15,7 @@ Fetch a single Nomatron organization member by organization name and username.
 ```terraform
 data "nomatron_organization_member" "example" {
   org_name = "platform"
-  username = "rbarnes"
+  username = "jdoe"
 }
 ```
 

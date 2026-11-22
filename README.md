@@ -73,7 +73,7 @@ resource "nomatron_agent" "runner" {
 - `nomatron_user`
 - `nomatron_variable`
 
-Examples live under [examples/resources](/Users/robertbarnes/Developer/terraform-provider-nomatron/examples/resources).
+Examples live under [examples/resources](examples/resources).
 
 ## Supported Data Sources
 
@@ -94,21 +94,21 @@ Examples live under [examples/resources](/Users/robertbarnes/Developer/terraform
 - `nomatron_service_account`
 - `nomatron_users`
 
-Examples live under [examples/data-sources](/Users/robertbarnes/Developer/terraform-provider-nomatron/examples/data-sources).
+Examples live under [examples/data-sources](examples/data-sources).
 
 ## Supported Ephemeral Resources
 
 - `nomatron_agent_token`
 - `nomatron_service_account_token`
 
-Examples live under [examples/ephemeral-resources](/Users/robertbarnes/Developer/terraform-provider-nomatron/examples/ephemeral-resources).
+Examples live under [examples/ephemeral-resources](examples/ephemeral-resources).
 
 ## Supported Actions
 
 - `nomatron_import_nomad_job`
 - `nomatron_speculative_plan`
 
-Examples live under [examples/actions](/Users/robertbarnes/Developer/terraform-provider-nomatron/examples/actions).
+Examples live under [examples/actions](examples/actions).
 
 ## Variable Resource Notes
 
@@ -187,17 +187,17 @@ terraform import nomatron_variable.example job/platform/payments/web/aaaaaaaa-aa
 
 See the full example set in:
 
-- [examples/resources](/Users/robertbarnes/Developer/terraform-provider-nomatron/examples/resources)
-- [examples/data-sources](/Users/robertbarnes/Developer/terraform-provider-nomatron/examples/data-sources)
-- [examples/ephemeral-resources](/Users/robertbarnes/Developer/terraform-provider-nomatron/examples/ephemeral-resources)
-- [examples/actions](/Users/robertbarnes/Developer/terraform-provider-nomatron/examples/actions)
+- [examples/resources](examples/resources)
+- [examples/data-sources](examples/data-sources)
+- [examples/ephemeral-resources](examples/ephemeral-resources)
+- [examples/actions](examples/actions)
 
 ## Development
 
 Run provider tests with:
 
 ```bash
-GOCACHE=/Users/robertbarnes/Developer/terraform-provider-nomatron/.gocache \
-GOMODCACHE=/Users/robertbarnes/Developer/terraform-provider-nomatron/.gomodcache \
+GOCACHE="$PWD/.gocache" \
+GOMODCACHE="$PWD/.gomodcache" \
 go test ./internal/provider/...
 ```

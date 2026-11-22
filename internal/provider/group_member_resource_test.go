@@ -86,8 +86,8 @@ func TestGroupMemberResource_ConfigureWrongType(t *testing.T) {
 func TestBuildGroupMemberID(t *testing.T) {
 	t.Parallel()
 
-	got := buildGroupMemberID("platform", "admins", "rbarnes")
-	want := "group_name=admins&org_name=platform&username=rbarnes"
+	got := buildGroupMemberID("platform", "admins", "jdoe")
+	want := "group_name=admins&org_name=platform&username=jdoe"
 
 	if got != want {
 		t.Fatalf("unexpected id: got %q want %q", got, want)
@@ -97,11 +97,11 @@ func TestBuildGroupMemberID(t *testing.T) {
 func TestParseGroupMemberID(t *testing.T) {
 	t.Parallel()
 
-	orgName, groupName, username, err := parseGroupMemberID("group_name=admins&org_name=platform&username=rbarnes")
+	orgName, groupName, username, err := parseGroupMemberID("group_name=admins&org_name=platform&username=jdoe")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if orgName != "platform" || groupName != "admins" || username != "rbarnes" {
+	if orgName != "platform" || groupName != "admins" || username != "jdoe" {
 		t.Fatalf("unexpected parsed values: %q %q %q", orgName, groupName, username)
 	}
 }
@@ -117,7 +117,7 @@ func TestParseGroupMemberID_Invalid(t *testing.T) {
 func TestGroupMemberNotFoundError(t *testing.T) {
 	t.Parallel()
 
-	err := &groupMemberNotFoundError{orgName: "platform", groupName: "admins", username: "rbarnes"}
+	err := &groupMemberNotFoundError{orgName: "platform", groupName: "admins", username: "jdoe"}
 	if !isGroupMemberNotFound(err) {
 		t.Fatal("expected groupMemberNotFoundError to be recognized")
 	}

@@ -36,6 +36,14 @@ class RiskTierTest(unittest.TestCase):
     def test_provider_config_is_high(self):
         self.assertEqual(tier("internal/provider/provider.go"), "high")
 
+    def test_matching_is_case_insensitive(self):
+        self.assertEqual(tier(".GITHUB/workflows/x.yml"), "high")
+        self.assertEqual(tier("GO.MOD"), "high")
+        self.assertTrue(risk_tier.is_forced_high(".FACTORY/risk_tier.py"))
+        self.assertTrue(
+            risk_tier.is_forced_high(".AGENTS/skills/security-review/SKILL.md")
+        )
+
     def test_workflow_and_release_files_are_high(self):
         self.assertEqual(tier(".github/workflows/provider.yml"), "high")
         self.assertEqual(tier('.github/workflows/a"b.yml'), "high")

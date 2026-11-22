@@ -1,6 +1,6 @@
 # Merge policy
 
-This is the intended policy. This is the merge policy for this repository. The risk-tier check, when added, only reports a tier and sets a label; it does not turn on auto-merge or change branch protection.
+This is the merge policy for this repository. The risk-tier check, when added, only reports a tier and sets a label; it does not turn on auto-merge or change branch protection.
 
 A future CI workflow must run the checker from the base branch's `.factory/`, take only file names from the pull request, and never use `pull_request_target` with a checkout of the pull request's code.
 

@@ -16,7 +16,7 @@ Nomatron organization resource.
 resource "nomatron_organization" "example" {
   name           = "platform"
   description    = "Platform engineering"
-  owner_username = "rbarnes"
+  owner_username = "jdoe"
 
   metadata = {
     team  = "platform"
