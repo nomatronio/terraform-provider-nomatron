@@ -388,7 +388,7 @@ func (r *JobResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 		return
 	}
 
-	rsp, err := r.client.DeleteAppJobWithResponse(ctx, state.OrgName.ValueString(), state.AppSlug.ValueString(), state.Slug.ValueString())
+	rsp, err := r.client.DeleteAppJobWithResponse(ctx, state.OrgName.ValueString(), state.AppSlug.ValueString(), state.Slug.ValueString(), nil)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed To Delete Job", err.Error())
 		return

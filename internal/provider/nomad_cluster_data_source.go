@@ -130,8 +130,8 @@ func flattenNomadClusterDataSource(base NomadClusterDataSourceModel, cluster sdk
 	}
 
 	agentID := types.StringNull()
-	if cluster.NetworkAgentId != nil {
-		agentID = types.StringValue(cluster.NetworkAgentId.String())
+	if cluster.ConnectivityAgentId != nil {
+		agentID = types.StringValue(cluster.ConnectivityAgentId.String())
 	}
 
 	return NomadClusterDataSourceModel{

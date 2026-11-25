@@ -36,8 +36,8 @@ func TestAgentDataSource_Metadata(t *testing.T) {
 
 	ds.Metadata(context.Background(), req, &resp)
 
-	if resp.TypeName != "nomatron_network_agent" {
-		t.Fatalf("expected type name %q, got %q", "nomatron_network_agent", resp.TypeName)
+	if resp.TypeName != "nomatron_connectivity_agent" {
+		t.Fatalf("expected type name %q, got %q", "nomatron_connectivity_agent", resp.TypeName)
 	}
 }
 
@@ -127,13 +127,13 @@ func TestFlattenAgentDataSource(t *testing.T) {
 	createdAt := time.Date(2026, 3, 26, 10, 0, 0, 0, time.UTC)
 	description := "Private runner for edge workloads"
 
-	agent := sdk.NetworkAgent{
+	agent := sdk.ConnectivityAgent{
 		Id:              agentID,
 		Name:            "edge-agent-1",
 		Description:     &description,
 		IsActive:        true,
 		CreatedAt:       createdAt,
-		CreatedByType:   sdk.NetworkAgentCreatedByTypeUser,
+		CreatedByType:   sdk.ConnectivityAgentCreatedByTypeUser,
 		CreatedByUserId: &userID,
 	}
 
@@ -167,7 +167,7 @@ func TestFlattenAgentDataSource_WithNullOptionalFields(t *testing.T) {
 
 	agentID := openapi_types.UUID(uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"))
 
-	agent := sdk.NetworkAgent{
+	agent := sdk.ConnectivityAgent{
 		Id:        agentID,
 		Name:      "edge-agent-2",
 		IsActive:  false,

@@ -33,42 +33,42 @@ type AgentDataSourceModel struct {
 }
 
 func (d *AgentDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_network_agent"
+	resp.TypeName = req.ProviderTypeName + "_connectivity_agent"
 }
 
 func (d *AgentDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Fetch a single Nomatron network agent by id or exact name.",
+		MarkdownDescription: "Fetch a single Nomatron connectivity agent by id or exact name.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Network Agent ID. If omitted, the provider can look up the network agent by exact name.",
+				MarkdownDescription: "Connectivity Agent ID. If omitted, the provider can look up the connectivity agent by exact name.",
 			},
 			"name": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Exact network agent name. If omitted, the provider reads the network agent by id.",
+				MarkdownDescription: "Exact connectivity agent name. If omitted, the provider reads the connectivity agent by id.",
 			},
 			"description": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "Description for the network agent.",
+				MarkdownDescription: "Description for the connectivity agent.",
 			},
 			"is_active": schema.BoolAttribute{
 				Computed:            true,
-				MarkdownDescription: "Whether the network agent is active.",
+				MarkdownDescription: "Whether the connectivity agent is active.",
 			},
 			"created_at": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "Timestamp when the network agent was created.",
+				MarkdownDescription: "Timestamp when the connectivity agent was created.",
 			},
 			"created_by_type": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "Type of actor that created the network agent.",
+				MarkdownDescription: "Type of actor that created the connectivity agent.",
 			},
 			"created_by_id": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "ID of the actor that created the network agent, when available.",
+				MarkdownDescription: "ID of the actor that created the connectivity agent, when available.",
 			},
 		},
 	}
@@ -85,13 +85,13 @@ func (d *AgentDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	if d.client == nil {
 		resp.Diagnostics.AddError(
 			"Client Not Configured",
-			"The provider client was not configured for the network agent data source.",
+			"The provider client was not configured for the connectivity agent data source.",
 		)
 		return
 	}
 
 	var (
-		agent sdk.NetworkAgent
+		agent sdk.ConnectivityAgent
 		err   error
 	)
 
@@ -104,19 +104,19 @@ func (d *AgentDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 
 		agent, err = readAgentByID(ctx, d.client, agentID)
 		if err != nil {
-			resp.Diagnostics.AddError("Failed To Read Network Agent", err.Error())
+			resp.Diagnostics.AddError("Failed To Read Connectivity Agent", err.Error())
 			return
 		}
 	} else if !data.Name.IsNull() && !data.Name.IsUnknown() && data.Name.ValueString() != "" {
 		agent, err = findAgentByExactName(ctx, d.client, data.Name.ValueString())
 		if err != nil {
-			resp.Diagnostics.AddError("Failed To Read Network Agent", err.Error())
+			resp.Diagnostics.AddError("Failed To Read Connectivity Agent", err.Error())
 			return
 		}
 	} else {
 		resp.Diagnostics.AddError(
 			"Missing Lookup Attribute",
-			"Set either id or name to read a single network agent.",
+			"Set either id or name to read a single connectivity agent.",
 		)
 		return
 	}
@@ -142,7 +142,7 @@ func (d *AgentDataSource) Configure(ctx context.Context, req datasource.Configur
 	d.client = client
 }
 
-func flattenAgentDataSource(agent sdk.NetworkAgent) AgentDataSourceModel {
+func flattenAgentDataSource(agent sdk.ConnectivityAgent) AgentDataSourceModel {
 	description := types.StringNull()
 	if agent.Description != nil {
 		description = types.StringValue(*agent.Description)
@@ -174,38 +174,38 @@ func flattenAgentDataSource(agent sdk.NetworkAgent) AgentDataSourceModel {
 	}
 }
 
-func readAgentByID(ctx context.Context, client *sdk.ClientWithResponses, agentID openapi_types.UUID) (sdk.NetworkAgent, error) {
-	rsp, err := client.ReadNetworkAgentWithResponse(ctx, agentID)
+func readAgentByID(ctx context.Context, client *sdk.ClientWithResponses, agentID openapi_types.UUID) (sdk.ConnectivityAgent, error) {
+	rsp, err := client.ReadConnectivityAgentWithResponse(ctx, agentID)
 	if err != nil {
-		return sdk.NetworkAgent{}, err
+		return sdk.ConnectivityAgent{}, err
 	}
 
 	if rsp.JSON404 != nil {
-		return sdk.NetworkAgent{}, fmt.Errorf("no network agent was found with id %q", agentID.String())
+		return sdk.ConnectivityAgent{}, fmt.Errorf("no connectivity agent was found with id %q", agentID.String())
 	}
 
 	if rsp.JSON200 == nil {
-		return sdk.NetworkAgent{}, fmt.Errorf("expected 200 response when reading network agent %q, got %s", agentID.String(), rsp.Status())
+		return sdk.ConnectivityAgent{}, fmt.Errorf("expected 200 response when reading connectivity agent %q, got %s", agentID.String(), rsp.Status())
 	}
 
-	return rsp.JSON200.Data.NetworkAgent, nil
+	return rsp.JSON200.Data.ConnectivityAgent, nil
 }
 
-func findAgentByExactName(ctx context.Context, client *sdk.ClientWithResponses, name string) (sdk.NetworkAgent, error) {
-	params := &sdk.ListNetworkAgentsParams{
+func findAgentByExactName(ctx context.Context, client *sdk.ClientWithResponses, name string) (sdk.ConnectivityAgent, error) {
+	params := &sdk.ListConnectivityAgentsParams{
 		Q: &name,
 	}
 
-	rsp, err := client.ListNetworkAgentsWithResponse(ctx, params)
+	rsp, err := client.ListConnectivityAgentsWithResponse(ctx, params)
 	if err != nil {
-		return sdk.NetworkAgent{}, err
+		return sdk.ConnectivityAgent{}, err
 	}
 
 	if rsp.JSON200 == nil {
-		return sdk.NetworkAgent{}, fmt.Errorf("expected 200 response when listing network agents for %q, got %s", name, rsp.Status())
+		return sdk.ConnectivityAgent{}, fmt.Errorf("expected 200 response when listing connectivity agents for %q, got %s", name, rsp.Status())
 	}
 
-	var matches []sdk.NetworkAgent
+	var matches []sdk.ConnectivityAgent
 	for _, agent := range rsp.JSON200.Data.Items {
 		if agent.Name == name {
 			matches = append(matches, agent)
@@ -214,10 +214,10 @@ func findAgentByExactName(ctx context.Context, client *sdk.ClientWithResponses, 
 
 	switch len(matches) {
 	case 0:
-		return sdk.NetworkAgent{}, fmt.Errorf("no network agent was found with name %q", name)
+		return sdk.ConnectivityAgent{}, fmt.Errorf("no connectivity agent was found with name %q", name)
 	case 1:
 		return matches[0], nil
 	default:
-		return sdk.NetworkAgent{}, fmt.Errorf("multiple network agents were found with name %q", name)
+		return sdk.ConnectivityAgent{}, fmt.Errorf("multiple connectivity agents were found with name %q", name)
 	}
 }

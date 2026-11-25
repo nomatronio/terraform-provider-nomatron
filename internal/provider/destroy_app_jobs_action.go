@@ -90,7 +90,7 @@ func (a *DestroyAppJobsAction) Invoke(ctx context.Context, req action.InvokeRequ
 		})
 	}
 
-	rsp, err := a.client.CreateAppDestroyPlanWithResponse(ctx, data.OrgName.ValueString(), data.AppSlug.ValueString())
+	rsp, err := a.client.CreateAppDestroyPlanWithResponse(ctx, data.OrgName.ValueString(), data.AppSlug.ValueString(), nil, sdk.CreateAppDestroyPlanJSONRequestBody{})
 	if err != nil {
 		resp.Diagnostics.AddError("Failed To Create App Destroy Plans", err.Error())
 		return

@@ -35,12 +35,12 @@ type AgentTokenEphemeralResourceModel struct {
 }
 
 func (r *AgentTokenEphemeralResource) Metadata(ctx context.Context, req ephemeral.MetadataRequest, resp *ephemeral.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_agent_token"
+	resp.TypeName = req.ProviderTypeName + "_connectivity_agent_token"
 }
 
 func (r *AgentTokenEphemeralResource) Schema(ctx context.Context, req ephemeral.SchemaRequest, resp *ephemeral.SchemaResponse) {
 	resp.Schema = eschema.Schema{
-		MarkdownDescription: "Rotate and return a fresh Nomatron agent token without storing it in Terraform state.",
+		MarkdownDescription: "Rotate and return a fresh Nomatron connectivity agent token without storing it in Terraform state.",
 		Attributes: map[string]eschema.Attribute{
 			"agent_id": eschema.StringAttribute{
 				Required:            true,
@@ -111,7 +111,7 @@ func (r *AgentTokenEphemeralResource) Open(ctx context.Context, req ephemeral.Op
 	if r.client == nil {
 		resp.Diagnostics.AddError(
 			"Client Not Configured",
-			"The provider client was not configured for the agent token ephemeral resource.",
+			"The provider client was not configured for the connectivity agent token ephemeral resource.",
 		)
 		return
 	}
@@ -122,7 +122,7 @@ func (r *AgentTokenEphemeralResource) Open(ctx context.Context, req ephemeral.Op
 		return
 	}
 
-	body := sdk.RotateNetworkAgentTokenJSONRequestBody{}
+	body := sdk.RotateConnectivityAgentTokenJSONRequestBody{}
 
 	if !data.Name.IsNull() && !data.Name.IsUnknown() {
 		name := data.Name.ValueString()
@@ -143,14 +143,14 @@ func (r *AgentTokenEphemeralResource) Open(ctx context.Context, req ephemeral.Op
 		body.RevokeExisting = &revokeExisting
 	}
 
-	rsp, err := r.client.RotateNetworkAgentTokenWithResponse(ctx, agentID, body)
+	rsp, err := r.client.RotateConnectivityAgentTokenWithResponse(ctx, agentID, body)
 	if err != nil {
-		resp.Diagnostics.AddError("Failed To Rotate Agent Token", err.Error())
+		resp.Diagnostics.AddError("Failed To Rotate Connectivity Agent Token", err.Error())
 		return
 	}
 
 	if rsp.JSON400 != nil {
-		resp.Diagnostics.AddError("Failed To Rotate Agent Token", formatErrorEnvelope(rsp.JSON400))
+		resp.Diagnostics.AddError("Failed To Rotate Connectivity Agent Token", formatErrorEnvelope(rsp.JSON400))
 		return
 	}
 
@@ -165,7 +165,7 @@ func (r *AgentTokenEphemeralResource) Open(ctx context.Context, req ephemeral.Op
 	}
 
 	if rsp.JSON409 != nil {
-		resp.Diagnostics.AddError("Failed To Rotate Agent Token", formatErrorEnvelope(rsp.JSON409))
+		resp.Diagnostics.AddError("Failed To Rotate Connectivity Agent Token", formatErrorEnvelope(rsp.JSON409))
 		return
 	}
 
