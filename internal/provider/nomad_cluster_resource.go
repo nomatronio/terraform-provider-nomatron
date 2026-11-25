@@ -320,7 +320,7 @@ func (r *NomadClusterResource) Delete(ctx context.Context, req resource.DeleteRe
 		return
 	}
 
-	rsp, err := r.client.DeleteGlobalClusterWithResponse(ctx, state.Name.ValueString())
+	rsp, err := r.client.DeleteGlobalClusterWithResponse(ctx, state.Name.ValueString(), nil)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed To Delete Nomad Cluster", err.Error())
 		return
@@ -406,7 +406,7 @@ func buildCreateClusterBody(plan, config NomadClusterResourceModel) (sdk.CreateG
 			diags.AddError("Invalid Agent ID", err.Error())
 			return body, diags
 		}
-		body.NetworkAgentId = &agentID
+		body.ConnectivityAgentId = &agentID
 	}
 
 	if !plan.ConnectivityMode.IsNull() && !plan.ConnectivityMode.IsUnknown() && plan.ConnectivityMode.ValueString() != "" {
@@ -458,7 +458,7 @@ func buildUpdateClusterBody(plan, state, config NomadClusterResourceModel) (sdk.
 			diags.AddError("Invalid Agent ID", err.Error())
 			return body, diags
 		}
-		body.NetworkAgentId = &agentID
+		body.ConnectivityAgentId = &agentID
 	}
 	if stringValueChanged(plan.ConnectivityMode, state.ConnectivityMode) && !plan.ConnectivityMode.IsNull() && !plan.ConnectivityMode.IsUnknown() && plan.ConnectivityMode.ValueString() != "" {
 		mode := sdk.UpdateClusterRequestConnectivityMode(plan.ConnectivityMode.ValueString())
@@ -504,8 +504,8 @@ func stateFromNomadCluster(base NomadClusterResourceModel, cluster sdk.Cluster) 
 	if agentID.IsUnknown() {
 		agentID = types.StringNull()
 	}
-	if cluster.NetworkAgentId != nil {
-		agentID = types.StringValue(cluster.NetworkAgentId.String())
+	if cluster.ConnectivityAgentId != nil {
+		agentID = types.StringValue(cluster.ConnectivityAgentId.String())
 	}
 
 	createdAt := types.StringNull()

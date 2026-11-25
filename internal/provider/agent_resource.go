@@ -40,12 +40,12 @@ type AgentResourceModel struct {
 }
 
 func (r *AgentResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_network_agent"
+	resp.TypeName = req.ProviderTypeName + "_connectivity_agent"
 }
 
 func (r *AgentResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Nomatron network agent resource.",
+		MarkdownDescription: "Nomatron connectivity agent resource.",
 
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -57,37 +57,37 @@ func (r *AgentResource) Schema(ctx context.Context, req resource.SchemaRequest, 
 			},
 			"name": schema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: "Display name for the network agent.",
+				MarkdownDescription: "Display name for the connectivity agent.",
 			},
 			"description": schema.StringAttribute{
 				Optional:            true,
-				MarkdownDescription: "Description for the network agent.",
+				MarkdownDescription: "Description for the connectivity agent.",
 			},
 			"is_active": schema.BoolAttribute{
 				Optional:            true,
 				Computed:            true,
-				MarkdownDescription: "Whether the network agent is active.",
+				MarkdownDescription: "Whether the connectivity agent is active.",
 				PlanModifiers: []planmodifier.Bool{
 					boolplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"created_at": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "Timestamp when the network agent was created.",
+				MarkdownDescription: "Timestamp when the connectivity agent was created.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"created_by_type": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "Type of actor that created the network agent.",
+				MarkdownDescription: "Type of actor that created the connectivity agent.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"created_by_id": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "ID of the actor that created the network agent, when available.",
+				MarkdownDescription: "ID of the actor that created the connectivity agent, when available.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -124,12 +124,12 @@ func (r *AgentResource) Create(ctx context.Context, req resource.CreateRequest, 
 	if r.client == nil {
 		resp.Diagnostics.AddError(
 			"Client Not Configured",
-			"The provider client was not configured for the network agent resource.",
+			"The provider client was not configured for the connectivity agent resource.",
 		)
 		return
 	}
 
-	body := sdk.CreateNetworkAgentJSONRequestBody{
+	body := sdk.CreateConnectivityAgentJSONRequestBody{
 		Name: plan.Name.ValueString(),
 	}
 
@@ -138,14 +138,14 @@ func (r *AgentResource) Create(ctx context.Context, req resource.CreateRequest, 
 		body.Description = &description
 	}
 
-	rsp, err := r.client.CreateNetworkAgentWithResponse(ctx, body)
+	rsp, err := r.client.CreateConnectivityAgentWithResponse(ctx, body)
 	if err != nil {
-		resp.Diagnostics.AddError("Failed To Create Network Agent", err.Error())
+		resp.Diagnostics.AddError("Failed To Create Connectivity Agent", err.Error())
 		return
 	}
 
 	if rsp.JSON400 != nil {
-		resp.Diagnostics.AddError("Failed To Create Network Agent", formatErrorEnvelope(rsp.JSON400))
+		resp.Diagnostics.AddError("Failed To Create Connectivity Agent", formatErrorEnvelope(rsp.JSON400))
 		return
 	}
 
@@ -155,40 +155,40 @@ func (r *AgentResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	if rsp.JSON409 != nil {
-		resp.Diagnostics.AddError("Network Agent Already Exists", formatErrorEnvelope(rsp.JSON409))
+		resp.Diagnostics.AddError("Connectivity Agent Already Exists", formatErrorEnvelope(rsp.JSON409))
 		return
 	}
 
 	if rsp.JSON201 == nil {
 		resp.Diagnostics.AddError(
 			"Unexpected API Response",
-			fmt.Sprintf("Expected 201 response when creating network agent, got %s.", rsp.Status()),
+			fmt.Sprintf("Expected 201 response when creating connectivity agent, got %s.", rsp.Status()),
 		)
 		return
 	}
 
-	agent := rsp.JSON201.Data.NetworkAgent
+	agent := rsp.JSON201.Data.ConnectivityAgent
 	agentID := agent.Id
 	if agentID == uuid.Nil {
-		agentID = rsp.JSON201.Data.Token.NetworkAgentId
+		agentID = rsp.JSON201.Data.Token.ConnectivityAgentId
 	}
 	if agentID == uuid.Nil {
 		resp.Diagnostics.AddError(
 			"Unexpected API Response",
-			"Create network agent response did not include an agent ID.",
+			"Create connectivity agent response did not include an agent ID.",
 		)
 		return
 	}
 
 	if !plan.IsActive.IsNull() && !plan.IsActive.IsUnknown() && !plan.IsActive.ValueBool() && agent.IsActive {
-		deactivateResp, err := r.client.DeactivateNetworkAgentWithResponse(ctx, agentID)
+		deactivateResp, err := r.client.DeactivateConnectivityAgentWithResponse(ctx, agentID)
 		if err != nil {
-			resp.Diagnostics.AddError("Failed To Deactivate Network Agent", err.Error())
+			resp.Diagnostics.AddError("Failed To Deactivate Connectivity Agent", err.Error())
 			return
 		}
 
 		if deactivateResp.JSON400 != nil {
-			resp.Diagnostics.AddError("Failed To Deactivate Network Agent", formatErrorEnvelope(deactivateResp.JSON400))
+			resp.Diagnostics.AddError("Failed To Deactivate Connectivity Agent", formatErrorEnvelope(deactivateResp.JSON400))
 			return
 		}
 
@@ -198,19 +198,19 @@ func (r *AgentResource) Create(ctx context.Context, req resource.CreateRequest, 
 		}
 
 		if deactivateResp.JSON404 != nil {
-			resp.Diagnostics.AddError("Network Agent Not Found", formatErrorEnvelope(deactivateResp.JSON404))
+			resp.Diagnostics.AddError("Connectivity Agent Not Found", formatErrorEnvelope(deactivateResp.JSON404))
 			return
 		}
 
 		if deactivateResp.JSON200 == nil {
 			resp.Diagnostics.AddError(
 				"Unexpected API Response",
-				fmt.Sprintf("Expected 200 response when deactivating network agent %q after create, got %s.", agent.Id.String(), deactivateResp.Status()),
+				fmt.Sprintf("Expected 200 response when deactivating connectivity agent %q after create, got %s.", agent.Id.String(), deactivateResp.Status()),
 			)
 			return
 		}
 
-		agent = deactivateResp.JSON200.Data.NetworkAgent
+		agent = deactivateResp.JSON200.Data.ConnectivityAgent
 		if agent.Id != uuid.Nil {
 			agentID = agent.Id
 		}
@@ -218,7 +218,7 @@ func (r *AgentResource) Create(ctx context.Context, req resource.CreateRequest, 
 
 	agent, err = r.readAgent(ctx, agentID)
 	if err != nil {
-		resp.Diagnostics.AddError("Failed To Read Network Agent", err.Error())
+		resp.Diagnostics.AddError("Failed To Read Connectivity Agent", err.Error())
 		return
 	}
 	if agent.Id == uuid.Nil {
@@ -240,7 +240,7 @@ func (r *AgentResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	if r.client == nil {
 		resp.Diagnostics.AddError(
 			"Client Not Configured",
-			"The provider client was not configured for the network agent resource.",
+			"The provider client was not configured for the connectivity agent resource.",
 		)
 		return
 	}
@@ -249,7 +249,7 @@ func (r *AgentResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	if err != nil {
 		agentID, err = r.resolveAgentID(ctx, state)
 		if err != nil {
-			resp.Diagnostics.AddError("Invalid Network Agent ID", err.Error())
+			resp.Diagnostics.AddError("Invalid Connectivity Agent ID", err.Error())
 			return
 		}
 	}
@@ -262,7 +262,7 @@ func (r *AgentResource) Read(ctx context.Context, req resource.ReadRequest, resp
 			return
 		}
 
-		resp.Diagnostics.AddError("Failed To Read Network Agent", err.Error())
+		resp.Diagnostics.AddError("Failed To Read Connectivity Agent", err.Error())
 		return
 	}
 
@@ -283,7 +283,7 @@ func (r *AgentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	if r.client == nil {
 		resp.Diagnostics.AddError(
 			"Client Not Configured",
-			"The provider client was not configured for the network agent resource.",
+			"The provider client was not configured for the connectivity agent resource.",
 		)
 		return
 	}
@@ -292,12 +292,12 @@ func (r *AgentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	if err != nil {
 		agentID, err = r.resolveAgentID(ctx, state)
 		if err != nil {
-			resp.Diagnostics.AddError("Invalid Network Agent ID", err.Error())
+			resp.Diagnostics.AddError("Invalid Connectivity Agent ID", err.Error())
 			return
 		}
 	}
 
-	body := sdk.UpdateNetworkAgentJSONRequestBody{}
+	body := sdk.UpdateConnectivityAgentJSONRequestBody{}
 	shouldPatch := false
 
 	if stringValueChanged(plan.Name, state.Name) && !plan.Name.IsUnknown() && !plan.Name.IsNull() {
@@ -312,16 +312,16 @@ func (r *AgentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		shouldPatch = true
 	}
 
-	currentAgent := sdk.NetworkAgent{}
+	currentAgent := sdk.ConnectivityAgent{}
 	if shouldPatch {
-		rsp, err := r.client.UpdateNetworkAgentWithResponse(ctx, agentID, body)
+		rsp, err := r.client.UpdateConnectivityAgentWithResponse(ctx, agentID, body)
 		if err != nil {
-			resp.Diagnostics.AddError("Failed To Update Network Agent", err.Error())
+			resp.Diagnostics.AddError("Failed To Update Connectivity Agent", err.Error())
 			return
 		}
 
 		if rsp.JSON400 != nil {
-			resp.Diagnostics.AddError("Failed To Update Network Agent", formatErrorEnvelope(rsp.JSON400))
+			resp.Diagnostics.AddError("Failed To Update Connectivity Agent", formatErrorEnvelope(rsp.JSON400))
 			return
 		}
 
@@ -338,24 +338,24 @@ func (r *AgentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		if rsp.JSON200 == nil {
 			resp.Diagnostics.AddError(
 				"Unexpected API Response",
-				fmt.Sprintf("Expected 200 response when updating network agent %q, got %s.", state.ID.ValueString(), rsp.Status()),
+				fmt.Sprintf("Expected 200 response when updating connectivity agent %q, got %s.", state.ID.ValueString(), rsp.Status()),
 			)
 			return
 		}
 
-		currentAgent = rsp.JSON200.Data.NetworkAgent
+		currentAgent = rsp.JSON200.Data.ConnectivityAgent
 	}
 
 	if boolValueChanged(plan.IsActive, state.IsActive) && !plan.IsActive.IsNull() && !plan.IsActive.IsUnknown() {
 		if plan.IsActive.ValueBool() {
-			activateResp, err := r.client.ActivateNetworkAgentWithResponse(ctx, agentID, sdk.ActivateNetworkAgentJSONRequestBody{})
+			activateResp, err := r.client.ActivateConnectivityAgentWithResponse(ctx, agentID, sdk.ActivateConnectivityAgentJSONRequestBody{})
 			if err != nil {
-				resp.Diagnostics.AddError("Failed To Activate Network Agent", err.Error())
+				resp.Diagnostics.AddError("Failed To Activate Connectivity Agent", err.Error())
 				return
 			}
 
 			if activateResp.JSON400 != nil {
-				resp.Diagnostics.AddError("Failed To Activate Network Agent", formatErrorEnvelope(activateResp.JSON400))
+				resp.Diagnostics.AddError("Failed To Activate Connectivity Agent", formatErrorEnvelope(activateResp.JSON400))
 				return
 			}
 
@@ -372,21 +372,21 @@ func (r *AgentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 			if activateResp.JSON201 == nil {
 				resp.Diagnostics.AddError(
 					"Unexpected API Response",
-					fmt.Sprintf("Expected 201 response when activating network agent %q, got %s.", state.ID.ValueString(), activateResp.Status()),
+					fmt.Sprintf("Expected 201 response when activating connectivity agent %q, got %s.", state.ID.ValueString(), activateResp.Status()),
 				)
 				return
 			}
 
-			currentAgent = activateResp.JSON201.Data.NetworkAgent
+			currentAgent = activateResp.JSON201.Data.ConnectivityAgent
 		} else {
-			deactivateResp, err := r.client.DeactivateNetworkAgentWithResponse(ctx, agentID)
+			deactivateResp, err := r.client.DeactivateConnectivityAgentWithResponse(ctx, agentID)
 			if err != nil {
-				resp.Diagnostics.AddError("Failed To Deactivate Network Agent", err.Error())
+				resp.Diagnostics.AddError("Failed To Deactivate Connectivity Agent", err.Error())
 				return
 			}
 
 			if deactivateResp.JSON400 != nil {
-				resp.Diagnostics.AddError("Failed To Deactivate Network Agent", formatErrorEnvelope(deactivateResp.JSON400))
+				resp.Diagnostics.AddError("Failed To Deactivate Connectivity Agent", formatErrorEnvelope(deactivateResp.JSON400))
 				return
 			}
 
@@ -403,12 +403,12 @@ func (r *AgentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 			if deactivateResp.JSON200 == nil {
 				resp.Diagnostics.AddError(
 					"Unexpected API Response",
-					fmt.Sprintf("Expected 200 response when deactivating network agent %q, got %s.", state.ID.ValueString(), deactivateResp.Status()),
+					fmt.Sprintf("Expected 200 response when deactivating connectivity agent %q, got %s.", state.ID.ValueString(), deactivateResp.Status()),
 				)
 				return
 			}
 
-			currentAgent = deactivateResp.JSON200.Data.NetworkAgent
+			currentAgent = deactivateResp.JSON200.Data.ConnectivityAgent
 		}
 	}
 
@@ -421,7 +421,7 @@ func (r *AgentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 				return
 			}
 
-			resp.Diagnostics.AddError("Failed To Read Network Agent", err.Error())
+			resp.Diagnostics.AddError("Failed To Read Connectivity Agent", err.Error())
 			return
 		}
 	} else {
@@ -433,7 +433,7 @@ func (r *AgentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 				return
 			}
 
-			resp.Diagnostics.AddError("Failed To Read Network Agent", err.Error())
+			resp.Diagnostics.AddError("Failed To Read Connectivity Agent", err.Error())
 			return
 		}
 	}
@@ -453,7 +453,7 @@ func (r *AgentResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	if r.client == nil {
 		resp.Diagnostics.AddError(
 			"Client Not Configured",
-			"The provider client was not configured for the network agent resource.",
+			"The provider client was not configured for the connectivity agent resource.",
 		)
 		return
 	}
@@ -462,14 +462,14 @@ func (r *AgentResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	if err != nil {
 		agentID, err = r.resolveAgentID(ctx, state)
 		if err != nil {
-			resp.Diagnostics.AddError("Invalid Network Agent ID", err.Error())
+			resp.Diagnostics.AddError("Invalid Connectivity Agent ID", err.Error())
 			return
 		}
 	}
 
-	rsp, err := r.client.DeleteNetworkAgentWithResponse(ctx, agentID)
+	rsp, err := r.client.DeleteConnectivityAgentWithResponse(ctx, agentID)
 	if err != nil {
-		resp.Diagnostics.AddError("Failed To Delete Network Agent", err.Error())
+		resp.Diagnostics.AddError("Failed To Delete Connectivity Agent", err.Error())
 		return
 	}
 
@@ -478,7 +478,7 @@ func (r *AgentResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	}
 
 	if rsp.JSON400 != nil {
-		resp.Diagnostics.AddError("Failed To Delete Network Agent", formatErrorEnvelope(rsp.JSON400))
+		resp.Diagnostics.AddError("Failed To Delete Connectivity Agent", formatErrorEnvelope(rsp.JSON400))
 		return
 	}
 
@@ -490,7 +490,7 @@ func (r *AgentResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	if rsp.StatusCode() != http.StatusOK && rsp.StatusCode() != http.StatusNoContent {
 		resp.Diagnostics.AddError(
 			"Unexpected API Response",
-			fmt.Sprintf("Expected 200/204 response when deleting network agent %q, got %s.", state.ID.ValueString(), rsp.Status()),
+			fmt.Sprintf("Expected 200/204 response when deleting connectivity agent %q, got %s.", state.ID.ValueString(), rsp.Status()),
 		)
 		return
 	}
@@ -500,7 +500,7 @@ func (r *AgentResource) ImportState(ctx context.Context, req resource.ImportStat
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func stateFromAgent(base AgentResourceModel, agent sdk.NetworkAgent) AgentResourceModel {
+func stateFromAgent(base AgentResourceModel, agent sdk.ConnectivityAgent) AgentResourceModel {
 	id := base.ID
 	if agent.Id != uuid.Nil {
 		id = types.StringValue(agent.Id.String())
@@ -557,7 +557,7 @@ func stateFromAgent(base AgentResourceModel, agent sdk.NetworkAgent) AgentResour
 	}
 }
 
-func flattenAgentCreatedByID(agent sdk.NetworkAgent) string {
+func flattenAgentCreatedByID(agent sdk.ConnectivityAgent) string {
 	if agent.CreatedByUserId != nil {
 		return agent.CreatedByUserId.String()
 	}
@@ -582,24 +582,24 @@ func (r *AgentResource) resolveAgentID(ctx context.Context, state AgentResourceM
 	}
 
 	if state.Name.IsNull() || state.Name.IsUnknown() || state.Name.ValueString() == "" {
-		return openapi_types.UUID{}, fmt.Errorf("network agent id is missing from state and name is unavailable for lookup")
+		return openapi_types.UUID{}, fmt.Errorf("connectivity agent id is missing from state and name is unavailable for lookup")
 	}
 
 	query := state.Name.ValueString()
-	params := &sdk.ListNetworkAgentsParams{
+	params := &sdk.ListConnectivityAgentsParams{
 		Q: &query,
 	}
 
-	rsp, err := r.client.ListNetworkAgentsWithResponse(ctx, params)
+	rsp, err := r.client.ListConnectivityAgentsWithResponse(ctx, params)
 	if err != nil {
 		return openapi_types.UUID{}, err
 	}
 
 	if rsp.JSON200 == nil {
-		return openapi_types.UUID{}, fmt.Errorf("expected 200 response when listing network agents for %q, got %s", query, rsp.Status())
+		return openapi_types.UUID{}, fmt.Errorf("expected 200 response when listing connectivity agents for %q, got %s", query, rsp.Status())
 	}
 
-	var matches []sdk.NetworkAgent
+	var matches []sdk.ConnectivityAgent
 	for _, agent := range rsp.JSON200.Data.Items {
 		if agent.Name == query {
 			matches = append(matches, agent)
@@ -608,11 +608,11 @@ func (r *AgentResource) resolveAgentID(ctx context.Context, state AgentResourceM
 
 	switch len(matches) {
 	case 0:
-		return openapi_types.UUID{}, fmt.Errorf("network agent id is missing from state and no agent named %q was found", query)
+		return openapi_types.UUID{}, fmt.Errorf("connectivity agent id is missing from state and no agent named %q was found", query)
 	case 1:
 		return matches[0].Id, nil
 	default:
-		return openapi_types.UUID{}, fmt.Errorf("network agent id is missing from state and multiple agents named %q were found", query)
+		return openapi_types.UUID{}, fmt.Errorf("connectivity agent id is missing from state and multiple agents named %q were found", query)
 	}
 }
 
@@ -621,24 +621,24 @@ type agentNotFoundError struct {
 }
 
 func (e *agentNotFoundError) Error() string {
-	return fmt.Sprintf("network agent %q not found", e.id)
+	return fmt.Sprintf("connectivity agent %q not found", e.id)
 }
 
-func (r *AgentResource) readAgent(ctx context.Context, agentID openapi_types.UUID) (sdk.NetworkAgent, error) {
-	rsp, err := r.client.ReadNetworkAgentWithResponse(ctx, agentID)
+func (r *AgentResource) readAgent(ctx context.Context, agentID openapi_types.UUID) (sdk.ConnectivityAgent, error) {
+	rsp, err := r.client.ReadConnectivityAgentWithResponse(ctx, agentID)
 	if err != nil {
-		return sdk.NetworkAgent{}, err
+		return sdk.ConnectivityAgent{}, err
 	}
 
 	if rsp.JSON404 != nil {
-		return sdk.NetworkAgent{}, &agentNotFoundError{id: agentID.String()}
+		return sdk.ConnectivityAgent{}, &agentNotFoundError{id: agentID.String()}
 	}
 
 	if rsp.JSON200 == nil {
-		return sdk.NetworkAgent{}, fmt.Errorf("expected 200 response when reading network agent %q, got %s", agentID.String(), rsp.Status())
+		return sdk.ConnectivityAgent{}, fmt.Errorf("expected 200 response when reading connectivity agent %q, got %s", agentID.String(), rsp.Status())
 	}
 
-	return rsp.JSON200.Data.NetworkAgent, nil
+	return rsp.JSON200.Data.ConnectivityAgent, nil
 }
 
 func errorAs(err error, target interface{}) bool {

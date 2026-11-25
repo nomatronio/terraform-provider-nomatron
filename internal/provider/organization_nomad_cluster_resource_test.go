@@ -112,14 +112,14 @@ func TestStateFromOrganizationNomadCluster(t *testing.T) {
 		OrgName: types.StringValue("platform"),
 	}
 	cluster := sdk.Cluster{
-		Id:               clusterID,
-		Name:             "primary",
-		Description:      &description,
-		Address:          &address,
-		NetworkAgentId:   &agentID,
-		ConnectivityMode: sdk.ClusterConnectivityModeDirect,
-		Scope:            "cccccccc-cccc-cccc-cccc-cccccccccccc",
-		SkipVerify:       true,
+		Id:                  clusterID,
+		Name:                "primary",
+		Description:         &description,
+		Address:             &address,
+		ConnectivityAgentId: &agentID,
+		ConnectivityMode:    sdk.ClusterConnectivityModeDirect,
+		Scope:               "cccccccc-cccc-cccc-cccc-cccccccccccc",
+		SkipVerify:          true,
 	}
 
 	state := stateFromOrganizationNomadCluster(base, cluster)

@@ -130,14 +130,14 @@ func TestFlattenOrganizationNomadClusterDataSource(t *testing.T) {
 	address := "https://nomad.example.com"
 
 	cluster := sdk.Cluster{
-		Id:               clusterID,
-		Name:             "prod-primary",
-		Description:      &description,
-		ConnectivityMode: sdk.ClusterConnectivityModeDirect,
-		Address:          &address,
-		NetworkAgentId:   &agentID,
-		SkipVerify:       true,
-		Scope:            "cccccccc-cccc-cccc-cccc-cccccccccccc",
+		Id:                  clusterID,
+		Name:                "prod-primary",
+		Description:         &description,
+		ConnectivityMode:    sdk.ClusterConnectivityModeDirect,
+		Address:             &address,
+		ConnectivityAgentId: &agentID,
+		SkipVerify:          true,
+		Scope:               "cccccccc-cccc-cccc-cccc-cccccccccccc",
 	}
 
 	data := flattenOrganizationNomadClusterDataSource(OrganizationNomadClusterDataSourceModel{

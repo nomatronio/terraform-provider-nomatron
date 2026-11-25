@@ -368,7 +368,7 @@ func (r *OrganizationNomadClusterResource) Delete(ctx context.Context, req resou
 		return
 	}
 
-	rsp, err := r.client.DeleteOrganizationClusterWithResponse(ctx, state.OrgName.ValueString(), state.Name.ValueString())
+	rsp, err := r.client.DeleteOrganizationClusterWithResponse(ctx, state.OrgName.ValueString(), state.Name.ValueString(), nil)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed To Delete Organization Nomad Cluster", err.Error())
 		return

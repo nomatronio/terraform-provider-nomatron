@@ -340,7 +340,7 @@ func (r *UserResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 		return
 	}
 
-	rsp, err := r.client.DeleteUserWithResponse(ctx, state.Username.ValueString())
+	rsp, err := r.client.DeleteUserWithResponse(ctx, state.Username.ValueString(), nil)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed To Delete User", err.Error())
 		return

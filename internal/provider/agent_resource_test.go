@@ -36,8 +36,8 @@ func TestAgentResource_Metadata(t *testing.T) {
 
 	r.Metadata(context.Background(), req, resp)
 
-	if resp.TypeName != "nomatron_network_agent" {
-		t.Fatalf("expected type name %q, got %q", "nomatron_network_agent", resp.TypeName)
+	if resp.TypeName != "nomatron_connectivity_agent" {
+		t.Fatalf("expected type name %q, got %q", "nomatron_connectivity_agent", resp.TypeName)
 	}
 }
 
@@ -131,13 +131,13 @@ func TestStateFromAgent_WithCreatorAndLastSeen(t *testing.T) {
 		Description: types.StringValue("old description"),
 	}
 
-	agent := sdk.NetworkAgent{
+	agent := sdk.ConnectivityAgent{
 		Id:              agentID,
 		Name:            "edge-agent-1",
 		Description:     &description,
 		IsActive:        true,
 		CreatedAt:       createdAt,
-		CreatedByType:   sdk.NetworkAgentCreatedByTypeUser,
+		CreatedByType:   sdk.ConnectivityAgentCreatedByTypeUser,
 		CreatedByUserId: &userID,
 	}
 
@@ -179,13 +179,13 @@ func TestStateFromAgent_WithNullOptionalFields(t *testing.T) {
 		CreatedAt:   types.StringValue(createdAt.Format(time.RFC3339)),
 	}
 
-	agent := sdk.NetworkAgent{
+	agent := sdk.ConnectivityAgent{
 		Id:                        agentID,
 		Name:                      "edge-agent-2",
 		Description:               nil,
 		IsActive:                  false,
 		CreatedAt:                 createdAt,
-		CreatedByType:             sdk.NetworkAgentCreatedByTypeServiceAccount,
+		CreatedByType:             sdk.ConnectivityAgentCreatedByTypeServiceAccount,
 		CreatedByServiceAccountId: &serviceAccountID,
 	}
 
@@ -219,7 +219,7 @@ func TestStateFromAgent_PreservesBaseIdentityWhenResponseOmitsFields(t *testing.
 		CreatedAt:   types.StringValue("2026-03-26T10:00:00Z"),
 	}
 
-	state := stateFromAgent(base, sdk.NetworkAgent{})
+	state := stateFromAgent(base, sdk.ConnectivityAgent{})
 
 	if state.ID.ValueString() != "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" {
 		t.Fatalf("expected base id to be preserved, got %q", state.ID.ValueString())
@@ -238,21 +238,21 @@ func TestFlattenAgentCreatedByID(t *testing.T) {
 	userID := openapi_types.UUID(uuid.MustParse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"))
 	serviceAccountID := openapi_types.UUID(uuid.MustParse("cccccccc-cccc-cccc-cccc-cccccccccccc"))
 
-	gotUser := flattenAgentCreatedByID(sdk.NetworkAgent{
+	gotUser := flattenAgentCreatedByID(sdk.ConnectivityAgent{
 		CreatedByUserId: &userID,
 	})
 	if gotUser != "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" {
 		t.Fatalf("unexpected user creator id: %q", gotUser)
 	}
 
-	gotServiceAccount := flattenAgentCreatedByID(sdk.NetworkAgent{
+	gotServiceAccount := flattenAgentCreatedByID(sdk.ConnectivityAgent{
 		CreatedByServiceAccountId: &serviceAccountID,
 	})
 	if gotServiceAccount != "cccccccc-cccc-cccc-cccc-cccccccccccc" {
 		t.Fatalf("unexpected service account creator id: %q", gotServiceAccount)
 	}
 
-	gotEmpty := flattenAgentCreatedByID(sdk.NetworkAgent{})
+	gotEmpty := flattenAgentCreatedByID(sdk.ConnectivityAgent{})
 	if gotEmpty != "" {
 		t.Fatalf("expected empty creator id, got %q", gotEmpty)
 	}

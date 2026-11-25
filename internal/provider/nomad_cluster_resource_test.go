@@ -107,14 +107,14 @@ func TestStateFromNomadCluster(t *testing.T) {
 
 	base := NomadClusterResourceModel{}
 	cluster := sdk.Cluster{
-		Id:               clusterID,
-		Name:             "primary",
-		Description:      &description,
-		Address:          &address,
-		NetworkAgentId:   &agentID,
-		ConnectivityMode: sdk.ClusterConnectivityModeDirect,
-		Scope:            "global",
-		SkipVerify:       true,
+		Id:                  clusterID,
+		Name:                "primary",
+		Description:         &description,
+		Address:             &address,
+		ConnectivityAgentId: &agentID,
+		ConnectivityMode:    sdk.ClusterConnectivityModeDirect,
+		Scope:               "global",
+		SkipVerify:          true,
 	}
 
 	state := stateFromNomadCluster(base, cluster)

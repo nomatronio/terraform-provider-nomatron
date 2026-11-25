@@ -46,7 +46,7 @@ resource "nomatron_organization" "platform" {
   name = "platform"
 }
 
-resource "nomatron_agent" "runner" {
+resource "nomatron_connectivity_agent" "runner" {
   name        = "platform-runner"
   description = "Terraform managed runner"
 }
@@ -54,7 +54,7 @@ resource "nomatron_agent" "runner" {
 
 ## Supported Resources
 
-- `nomatron_agent`
+- `nomatron_connectivity_agent`
 - `nomatron_application`
 - `nomatron_environment`
 - `nomatron_github_app_integration`
@@ -77,7 +77,7 @@ Examples live under [examples/resources](examples/resources).
 
 ## Supported Data Sources
 
-- `nomatron_agent`
+- `nomatron_connectivity_agent`
 - `nomatron_application`
 - `nomatron_environment`
 - `nomatron_github_app_integration`
@@ -98,7 +98,7 @@ Examples live under [examples/data-sources](examples/data-sources).
 
 ## Supported Ephemeral Resources
 
-- `nomatron_agent_token`
+- `nomatron_connectivity_agent_token`
 - `nomatron_service_account_token`
 
 Examples live under [examples/ephemeral-resources](examples/ephemeral-resources).
@@ -146,7 +146,7 @@ Most managed resources support `terraform import`.
 Common patterns:
 
 - UUID-based imports:
-  - `nomatron_agent`
+  - `nomatron_connectivity_agent`
   - `nomatron_user`
   - `nomatron_service_account`
 
@@ -170,7 +170,7 @@ Common patterns:
 Examples:
 
 ```hcl
-terraform import nomatron_agent.example aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+terraform import nomatron_connectivity_agent.example aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
 terraform import nomatron_organization.example platform
 terraform import nomatron_application.example platform/payments
 terraform import nomatron_environment.example platform/payments/prod

@@ -428,7 +428,7 @@ func (r *ApplicationResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 
-	rsp, err := r.client.DeleteAppWithResponse(ctx, state.OrgName.ValueString(), state.Slug.ValueString())
+	rsp, err := r.client.DeleteAppWithResponse(ctx, state.OrgName.ValueString(), state.Slug.ValueString(), nil)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed To Delete Application", err.Error())
 		return

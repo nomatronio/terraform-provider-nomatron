@@ -68,8 +68,8 @@ func TestAgentTokenEphemeralResource_Metadata(t *testing.T) {
 
 	r.Metadata(context.Background(), req, resp)
 
-	if resp.TypeName != "nomatron_agent_token" {
-		t.Fatalf("expected type name %q, got %q", "nomatron_agent_token", resp.TypeName)
+	if resp.TypeName != "nomatron_connectivity_agent_token" {
+		t.Fatalf("expected type name %q, got %q", "nomatron_connectivity_agent_token", resp.TypeName)
 	}
 }
 
@@ -145,7 +145,7 @@ func TestAgentTokenEphemeralResource_EchoProvider(t *testing.T) {
 		if req.Method != http.MethodPost {
 			t.Fatalf("unexpected method: %s", req.Method)
 		}
-		if req.URL.Path != "/api/v1/network-agents/"+agentID.String()+"/tokens/rotate" {
+		if req.URL.Path != "/api/v1/connectivity-agents/"+agentID.String()+"/tokens/rotate" {
 			t.Fatalf("unexpected path: %s", req.URL.Path)
 		}
 		if got := req.Header.Get("Authorization"); got != "Bearer service-account-token" {
@@ -206,14 +206,14 @@ provider "nomatron" {
   token   = "service-account-token"
 }
 
-ephemeral "nomatron_agent_token" "test" {
+ephemeral "nomatron_connectivity_agent_token" "test" {
   agent_id        = "` + agentID.String() + `"
   name            = "terraform"
   revoke_existing = true
 }
 
 provider "echo" {
-  data = ephemeral.nomatron_agent_token.test
+  data = ephemeral.nomatron_connectivity_agent_token.test
 }
 
 resource "echo" "test" {}
